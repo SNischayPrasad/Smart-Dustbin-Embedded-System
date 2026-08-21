@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# Build artefacts - regenerated on every compile, never commit them
+# ---------------------------------------------------------------------------
+build/
+.pio/
+.pioenvs/
+.piolibdeps/
+*.hex
+*.elf
+*.bin
+*.o
+*.d
+*.a
+
+# Arduino IDE
+*.ino.cpp
+.build/
+.arduino15/
+
+# ---------------------------------------------------------------------------
+# Node
+# ---------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log
+package-lock.json
+
+# Runtime state written by server/server.js - changes on every run
+server/fleet.json
+
+# ---------------------------------------------------------------------------
+# Editors and IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+.claude/
+
+# ---------------------------------------------------------------------------
+# Operating system junk
+# ---------------------------------------------------------------------------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Secrets - never commit Wi-Fi credentials or API keys
+# ---------------------------------------------------------------------------
+secrets.h
+credentials.h
+.env
+*.local
+
+# ---------------------------------------------------------------------------
+# Large media - link to it instead of committing it
+# ---------------------------------------------------------------------------
+*.mp4
+*.mov
+*.avi
