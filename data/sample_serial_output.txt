@@ -1,0 +1,198 @@
+Smart Dustbin - captured Serial Monitor session (ESP32, 115200 baud)
+Firmware v2.0.0-wifi - three ultrasonic sensors, two of them inside the bin.
+Generated from the firmware twin, which implements the same logic as
+arduino_code/05_esp32_wifi_version.ino
+==========================================================================
+
+==================================================
+   SMART DUSTBIN - EMBEDDED SYSTEM (ESP32)
+   Device  : BIN-001
+   Firmware: v2.0.0-wifi
+   Sensors : 1 hand + 2 in-bin level (A and B)
+   Bin height     : 30.0 cm
+   Hand threshold : 25.0 cm
+   Warn / Full    : 75 % / 90 %
+   Uneven-load gap: 25 %
+==================================================
+Power-on self test ... outputs OK
+Sensor check: HAND OK | LEVEL-A OK | LEVEL-B OK
+Connecting to Wi-Fi....
+Connected. Dashboard URL: http://10.13.37.2
+Status endpoint:          http://10.13.37.2/api/status
+HTTP server started on port 80
+System running. Type HELP for commands.
+
+[0s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[2s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[4s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+-- a few items dropped in, slight mound under A --
+[6s] Hand=80.0cm | Lid=CLOSED | A=28% B=22% | Fill=25% | Status=OK | Opens=0
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[8s] Hand=80.0cm | Lid=CLOSED | A=28% B=22% | Fill=25% | Status=OK | Opens=0
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[10s] Hand=80.0cm | Lid=CLOSED | A=28% B=22% | Fill=25% | Status=OK | Opens=0
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+>>> Hand detected - opening lid
+[12s] Hand=12.0cm | Lid=OPENING | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"OPENING","status":"OK","opens":1,"errors":0}
+[14s] Hand=12.0cm | Lid=OPEN | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"OPEN","status":"OK","opens":1,"errors":0}
+[16s] Hand=80.0cm | Lid=OPEN | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"OPEN","status":"OK","opens":1,"errors":0}
+[18s] Hand=80.0cm | Lid=OPEN | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"OPEN","status":"OK","opens":1,"errors":0}
+<<< Area clear - closing lid
+[20s] Hand=80.0cm | Lid=CLOSED | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+-- bin now roughly half full, load fairly even --
+[22s] Hand=80.0cm | Lid=CLOSED | A=28% B=22% | Fill=25% | Status=OK | Opens=1
+        [#####---------------]
+{"id":"BIN-001","fill":25,"fillA":28,"fillB":22,"spread":6,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[24s] Hand=80.0cm | Lid=CLOSED | A=52% B=48% | Fill=50% | Status=OK | Opens=1
+        [##########----------]
+{"id":"BIN-001","fill":50,"fillA":52,"fillB":48,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[26s] Hand=80.0cm | Lid=CLOSED | A=52% B=48% | Fill=50% | Status=OK | Opens=1
+        [##########----------]
+{"id":"BIN-001","fill":50,"fillA":52,"fillB":48,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[28s] Hand=80.0cm | Lid=CLOSED | A=52% B=48% | Fill=50% | Status=OK | Opens=1
+        [##########----------]
+{"id":"BIN-001","fill":50,"fillA":52,"fillB":48,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+-- a large box dropped under sensor A --
+[30s] Hand=80.0cm | Lid=CLOSED | A=52% B=48% | Fill=50% | Status=OK | Opens=1
+        [##########----------]
+{"id":"BIN-001","fill":50,"fillA":52,"fillB":48,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[32s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[34s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+-- NOTE: a single-sensor bin sitting over A would have
+--       reported 88% FULL here. The fused value is 51%.
+[36s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[38s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[40s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+-- box settled, load levelled out --
+[42s] Hand=80.0cm | Lid=CLOSED | A=88% B=14% | Fill=51% | Status=OK | Opens=1 | UNEVEN LOAD
+        [##########----------]
+{"id":"BIN-001","fill":51,"fillA":88,"fillB":14,"spread":74,"uneven":true,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[44s] Hand=80.0cm | Lid=CLOSED | A=60% B=56% | Fill=58% | Status=OK | Opens=1
+        [############--------]
+{"id":"BIN-001","fill":58,"fillA":60,"fillB":56,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[46s] Hand=80.0cm | Lid=CLOSED | A=60% B=56% | Fill=58% | Status=OK | Opens=1
+        [############--------]
+{"id":"BIN-001","fill":58,"fillA":60,"fillB":56,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[48s] Hand=80.0cm | Lid=CLOSED | A=60% B=56% | Fill=58% | Status=OK | Opens=1
+        [############--------]
+{"id":"BIN-001","fill":58,"fillA":60,"fillB":56,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+-- crossed the warning threshold --
+[50s] Hand=80.0cm | Lid=CLOSED | A=60% B=56% | Fill=58% | Status=OK | Opens=1
+        [############--------]
+{"id":"BIN-001","fill":58,"fillA":60,"fillB":56,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":1,"errors":0}
+[52s] Hand=80.0cm | Lid=CLOSED | A=78% B=74% | Fill=76% | Status=WARNING | Opens=1
+        [###############-----]
+{"id":"BIN-001","fill":76,"fillA":78,"fillB":74,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"WARNING","opens":1,"errors":0}
+[54s] Hand=80.0cm | Lid=CLOSED | A=78% B=74% | Fill=76% | Status=WARNING | Opens=1
+        [###############-----]
+{"id":"BIN-001","fill":76,"fillA":78,"fillB":74,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"WARNING","opens":1,"errors":0}
+[56s] Hand=80.0cm | Lid=CLOSED | A=78% B=74% | Fill=76% | Status=WARNING | Opens=1
+        [###############-----]
+{"id":"BIN-001","fill":76,"fillA":78,"fillB":74,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"WARNING","opens":1,"errors":0}
+-- crossed the full threshold --
+[58s] Hand=80.0cm | Lid=CLOSED | A=78% B=74% | Fill=76% | Status=WARNING | Opens=1
+        [###############-----]
+{"id":"BIN-001","fill":76,"fillA":78,"fillB":74,"spread":4,"uneven":false,"sensors":2,"lid":"CLOSED","status":"WARNING","opens":1,"errors":0}
+[60s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[62s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[64s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+> STATUS
+Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+[66s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[68s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+> MUTE
+ACK: buzzer muted
+[70s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[72s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+-- level sensor A cable pulled out --
+[74s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[76s] Hand=80.0cm | Lid=CLOSED | A=--% B=90% | Fill=90% | Status=FULL | Opens=1 | DEGRADED 1 SENSOR
+        [##################--]
+{"id":"BIN-001","fill":90,"fillA":-1,"fillB":90,"spread":0,"uneven":false,"sensors":1,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[78s] Hand=80.0cm | Lid=CLOSED | A=--% B=90% | Fill=90% | Status=FULL | Opens=1 | DEGRADED 1 SENSOR
+        [##################--]
+{"id":"BIN-001","fill":90,"fillA":-1,"fillB":90,"spread":0,"uneven":false,"sensors":1,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[80s] Hand=80.0cm | Lid=CLOSED | A=--% B=90% | Fill=90% | Status=FULL | Opens=1 | DEGRADED 1 SENSOR
+        [##################--]
+{"id":"BIN-001","fill":90,"fillA":-1,"fillB":90,"spread":0,"uneven":false,"sensors":1,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+-- sensor A reconnected --
+[82s] Hand=80.0cm | Lid=CLOSED | A=--% B=90% | Fill=90% | Status=FULL | Opens=1 | DEGRADED 1 SENSOR
+        [##################--]
+{"id":"BIN-001","fill":90,"fillA":-1,"fillB":90,"spread":0,"uneven":false,"sensors":1,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[84s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+[86s] Hand=80.0cm | Lid=CLOSED | A=92% B=90% | Fill=91% | Status=FULL | Opens=1
+        [##################--]
+{"id":"BIN-001","fill":91,"fillA":92,"fillB":90,"spread":2,"uneven":false,"sensors":2,"lid":"CLOSED","status":"FULL","opens":1,"errors":0}
+> EMPTY
+ACK: bin marked as collected, counters reset
+[88s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[90s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+> UNMUTE
+ACK: buzzer enabled
+[92s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[94s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[96s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[98s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}
+[100s] Hand=80.0cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
+        [--------------------]
+{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0}

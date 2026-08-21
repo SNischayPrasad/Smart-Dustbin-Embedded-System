@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "author": "Nischay",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 200, "left": 40, "attrs": {} },
+
+    { "type": "wokwi-hc-sr04", "id": "usHand",
+      "top": -80, "left": -60, "attrs": { "distance": "80" } },
+
+    { "type": "wokwi-hc-sr04", "id": "usLevelA",
+      "top": -80, "left": 160, "attrs": { "distance": "30" } },
+
+    { "type": "wokwi-hc-sr04", "id": "usLevelB",
+      "top": -80, "left": 380, "attrs": { "distance": "30" } },
+
+    { "type": "wokwi-servo", "id": "servoLid",
+      "top": 60, "left": 520, "attrs": { "horn": "double" } },
+
+    { "type": "wokwi-buzzer", "id": "buzzer",
+      "top": 330, "left": 530, "attrs": { "volume": "0.1" } },
+
+    { "type": "wokwi-led", "id": "ledGreen",
+      "top": 200, "left": 420, "attrs": { "color": "green", "label": "OK" } },
+
+    { "type": "wokwi-led", "id": "ledRed",
+      "top": 200, "left": 480, "attrs": { "color": "red", "label": "FULL" } },
+
+    { "type": "wokwi-resistor", "id": "rGreen",
+      "top": 275, "left": 410, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-resistor", "id": "rRed",
+      "top": 275, "left": 470, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-lcd1602", "id": "lcd",
+      "top": 420, "left": 120, "attrs": { "pins": "i2c", "background": "green" } }
+  ],
+  "connections": [
+    [ "usHand:VCC",  "uno:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usHand:GND",  "uno:GND.1", "black",  [ "v-16", "h-30" ] ],
+    [ "usHand:TRIG", "uno:2",     "green",  [ "v-32", "h40" ] ],
+    [ "usHand:ECHO", "uno:3",     "blue",   [ "v-40", "h40" ] ],
+
+    [ "usLevelA:VCC",  "uno:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usLevelA:GND",  "uno:GND.1", "black",  [ "v-16", "h-30" ] ],
+    [ "usLevelA:TRIG", "uno:4",     "orange", [ "v-32", "h40" ] ],
+    [ "usLevelA:ECHO", "uno:5",     "violet", [ "v-40", "h40" ] ],
+
+    [ "usLevelB:VCC",  "uno:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usLevelB:GND",  "uno:GND.1", "black",  [ "v-16", "h-30" ] ],
+    [ "usLevelB:TRIG", "uno:8",     "gold",   [ "v-32", "h40" ] ],
+    [ "usLevelB:ECHO", "uno:9",     "purple", [ "v-40", "h40" ] ],
+
+    [ "servoLid:V+",  "uno:5V",    "red",    [ "h-20", "v40" ] ],
+    [ "servoLid:GND", "uno:GND.2", "black",  [ "h-20", "v40" ] ],
+    [ "servoLid:PWM", "uno:6",     "yellow", [ "h-20", "v40" ] ],
+
+    [ "buzzer:1", "uno:7",     "brown", [ "v10", "h-40" ] ],
+    [ "buzzer:2", "uno:GND.2", "black", [ "v10", "h-40" ] ],
+
+    [ "uno:10",     "ledGreen:A", "green", [ "v-20", "h40" ] ],
+    [ "ledGreen:C", "rGreen:1",   "black", [ "v10" ] ],
+    [ "rGreen:2",   "uno:GND.3",  "black", [ "v10", "h-60" ] ],
+
+    [ "uno:12",   "ledRed:A",  "red",   [ "v-30", "h40" ] ],
+    [ "ledRed:C", "rRed:1",    "black", [ "v10" ] ],
+    [ "rRed:2",   "uno:GND.3", "black", [ "v10", "h-60" ] ],
+
+    [ "lcd:GND", "uno:GND.3", "black", [ "v20", "h-40" ] ],
+    [ "lcd:VCC", "uno:5V",    "red",   [ "v30", "h-40" ] ],
+    [ "lcd:SDA", "uno:A4",    "green", [ "v40", "h-40" ] ],
+    [ "lcd:SCL", "uno:A5",    "blue",  [ "v50", "h-40" ] ]
+  ],
+  "dependencies": {}
+}

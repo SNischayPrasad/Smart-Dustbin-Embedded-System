@@ -1,0 +1,4 @@
+# Wokwi library list - installed automatically by the simulator.
+# One library name per line, exactly as in the Arduino Library Manager.
+ESP32Servo
+LiquidCrystal I2C

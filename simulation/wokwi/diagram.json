@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "author": "Nischay",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 190, "left": 40, "attrs": {} },
+
+    { "type": "wokwi-hc-sr04", "id": "usHand",
+      "top": -90, "left": -60, "attrs": { "distance": "80" } },
+
+    { "type": "wokwi-hc-sr04", "id": "usLevelA",
+      "top": -90, "left": 165, "attrs": { "distance": "30" } },
+
+    { "type": "wokwi-hc-sr04", "id": "usLevelB",
+      "top": -90, "left": 390, "attrs": { "distance": "30" } },
+
+    { "type": "wokwi-servo", "id": "servoLid",
+      "top": 55, "left": 530, "attrs": { "horn": "double" } },
+
+    { "type": "wokwi-buzzer", "id": "buzzer",
+      "top": 335, "left": 540, "attrs": { "volume": "0.1" } },
+
+    { "type": "wokwi-led", "id": "ledGreen",
+      "top": 205, "left": 430, "attrs": { "color": "green", "label": "OK" } },
+
+    { "type": "wokwi-led", "id": "ledRed",
+      "top": 205, "left": 490, "attrs": { "color": "red", "label": "FULL" } },
+
+    { "type": "wokwi-resistor", "id": "rGreen",
+      "top": 280, "left": 420, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-resistor", "id": "rRed",
+      "top": 280, "left": 480, "rotate": 90, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-lcd1602", "id": "lcd",
+      "top": 425, "left": 120, "attrs": { "pins": "i2c", "background": "green" } }
+  ],
+  "connections": [
+    [ "usHand:VCC",  "esp:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usHand:GND",  "esp:GND.1", "black",  [ "v-16", "h-30" ] ],
+    [ "usHand:TRIG", "esp:5",    "green",  [ "v-32", "h40" ] ],
+    [ "usHand:ECHO", "esp:18",   "blue",   [ "v-40", "h40" ] ],
+
+    [ "usLevelA:VCC",  "esp:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usLevelA:GND",  "esp:GND.1", "black",  [ "v-16", "h-30" ] ],
+    [ "usLevelA:TRIG", "esp:19",   "orange", [ "v-32", "h40" ] ],
+    [ "usLevelA:ECHO", "esp:23",   "violet", [ "v-40", "h40" ] ],
+
+    [ "usLevelB:VCC",  "esp:5V",    "red",    [ "v-24", "h-40" ] ],
+    [ "usLevelB:GND",  "esp:GND.2", "black",  [ "v-16", "h-30" ] ],
+    [ "usLevelB:TRIG", "esp:32",   "gold",   [ "v-32", "h40" ] ],
+    [ "usLevelB:ECHO", "esp:33",   "purple", [ "v-40", "h40" ] ],
+
+    [ "servoLid:V+",  "esp:5V",    "red",    [ "h-20", "v40" ] ],
+    [ "servoLid:GND", "esp:GND.2", "black",  [ "h-20", "v40" ] ],
+    [ "servoLid:PWM", "esp:13",   "yellow", [ "h-20", "v40" ] ],
+
+    [ "buzzer:1", "esp:25",   "brown", [ "v10", "h-40" ] ],
+    [ "buzzer:2", "esp:GND.3", "black", [ "v10", "h-40" ] ],
+
+    [ "esp:26",    "ledGreen:A", "green", [ "v-20", "h40" ] ],
+    [ "ledGreen:C", "rGreen:1",   "black", [ "v10" ] ],
+    [ "rGreen:2",   "esp:GND.3",  "black", [ "v10", "h-60" ] ],
+
+    [ "esp:27",  "ledRed:A",  "red",   [ "v-30", "h40" ] ],
+    [ "ledRed:C", "rRed:1",    "black", [ "v10" ] ],
+    [ "rRed:2",   "esp:GND.3", "black", [ "v10", "h-60" ] ],
+
+    [ "lcd:GND", "esp:GND.3", "black", [ "v20", "h-40" ] ],
+    [ "lcd:VCC", "esp:5V",    "red",   [ "v30", "h-40" ] ],
+    [ "lcd:SDA", "esp:21",   "green", [ "v40", "h-40" ] ],
+    [ "lcd:SCL", "esp:22",   "blue",  [ "v50", "h-40" ] ]
+  ],
+  "dependencies": {}
+}

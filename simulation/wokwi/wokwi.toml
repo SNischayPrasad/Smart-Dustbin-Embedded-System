@@ -1,0 +1,6 @@
+# Only needed if you run Wokwi from inside VS Code with PlatformIO.
+# For the online simulator you just need diagram.json + sketch.ino.
+[wokwi]
+version = 1
+firmware = ".pio/build/esp32dev/firmware.bin"
+elf      = ".pio/build/esp32dev/firmware.elf"
