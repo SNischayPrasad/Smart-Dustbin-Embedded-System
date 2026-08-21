@@ -9,6 +9,17 @@ and a live web dashboard for managing bins across a city.
 ![Build](https://img.shields.io/badge/ESP32%20build-75%25%20flash%20%7C%2014%25%20RAM-success)
 ![Simulation](https://img.shields.io/badge/hardware-not%20required-orange)
 
+### ▶ [**See it live**](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/)
+
+| | |
+|---|---|
+| **Public city dashboard** | https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/ |
+| **Admin console** | [/login.html](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/login.html) — sign in with `Nischay` / `Admin@123` |
+
+Inside the admin console, scroll to **Live firmware simulation** and press
+**Uneven pile (A 90 / B 10)** — that one button demonstrates the whole point
+of the dual-sensor design.
+
 > **Built on the ESP32**, so the bin has Wi-Fi and a REST API and the dashboard
 > can drive a real board. An Arduino UNO build is included as an alternative.
 >
