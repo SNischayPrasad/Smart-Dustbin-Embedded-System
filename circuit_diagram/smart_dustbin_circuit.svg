@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 848" width="1160" height="848" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <style>
+      .board  { fill:#1d1d1f; }
+      .comp   { fill:#ffffff; stroke:#d2d2d7; stroke-width:1.5; }
+      .inbin  { fill:#ffffff; stroke:#0071e3; stroke-width:1.8; }
+      .title  { fill:#1d1d1f; font-size:27px; font-weight:700; letter-spacing:-0.5px; }
+      .sub    { fill:#6e6e73; font-size:13.5px; }
+      .ctext  { fill:#1d1d1f; font-size:13.5px; font-weight:600; }
+      .cnote  { fill:#6e6e73; font-size:11.5px; }
+      .pin    { fill:#1d1d1f; font-size:11px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+      .bpin   { fill:#f5f5f7; font-size:11px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+      .wire   { fill:none; stroke-width:2.4; stroke-linecap:round; }
+      .wlabel { font-size:11px; font-weight:600; font-family:ui-monospace,Menlo,Consolas,monospace; }
+      .legend { fill:#424245; font-size:12.5px; }
+      .tag    { fill:#0071e3; font-size:11px; font-weight:700; }
+    </style>
+  </defs>
+
+  <rect width="1160" height="848" fill="#ffffff"/>
+  <text x="34" y="46" class="title">Smart Dustbin - Circuit Connections (ESP32)</text>
+  <text x="34" y="68" class="sub">3x HC-SR04 (1 hand + 2 inside the bin) - SG90 servo - buzzer - 2 LEDs with 220R - optional 16x2 I2C LCD - Wi-Fi REST API</text>
+
+  <!-- ===================== ARDUINO UNO ===================== -->
+  <rect x="450" y="240" width="250" height="360" rx="14" class="board"/>
+  <text x="575" y="274" text-anchor="middle" fill="#ffffff" font-size="17" font-weight="700">ESP32 DevKit V1</text>
+  <text x="575" y="293" text-anchor="middle" fill="#a1a1a6" font-size="11">ESP32-WROOM-32 - 3.3 V logic</text>
+  <rect x="472" y="304" width="206" height="1" fill="#3a3a3c"/>
+
+  <text x="466" y="330" class="bpin">GPIO5</text>
+  <text x="466" y="356" class="bpin">GPIO18</text>
+  <text x="466" y="382" class="bpin">GPIO19</text>
+  <text x="466" y="408" class="bpin">GPIO23</text>
+  <text x="466" y="434" class="bpin">GPIO13</text>
+  <text x="466" y="460" class="bpin">GPIO25</text>
+  <text x="466" y="486" class="bpin">GPIO32</text>
+  <text x="466" y="512" class="bpin">GPIO33</text>
+  <text x="466" y="538" class="bpin">GPIO26</text>
+  <text x="466" y="564" class="bpin">GPIO27</text>
+
+  <text x="684" y="330" text-anchor="end" class="bpin">5V / VIN</text>
+  <text x="684" y="356" text-anchor="end" class="bpin">GND</text>
+  <text x="684" y="382" text-anchor="end" class="bpin">GPIO21 SDA</text>
+  <text x="684" y="408" text-anchor="end" class="bpin">GPIO22 SCL</text>
+  <text x="684" y="442" text-anchor="end" class="bpin">USB-C</text>
+  <text x="575" y="626" text-anchor="middle" class="sub">Free: GPIO14, 15, 16, 17, 34, 35, VP, VN</text>
+
+  <!-- ===================== HC-SR04 #1 : HAND ===================== -->
+  <rect x="56" y="120" width="238" height="96" rx="12" class="comp"/>
+  <text x="74" y="146" class="ctext">HC-SR04 #1 - Hand detection</text>
+  <text x="74" y="165" class="cnote">OUTSIDE, on the front face, looking out</text>
+  <text x="74" y="187" class="pin">VCC  TRIG  ECHO  GND</text>
+  <text x="74" y="206" class="cnote">Opens the lid when an object is under 25 cm</text>
+
+  <!-- ===================== HC-SR04 #2 : LEVEL A ===================== -->
+  <rect x="56" y="248" width="238" height="100" rx="12" class="inbin"/>
+  <text x="74" y="272" class="tag">INSIDE THE BIN</text>
+  <text x="74" y="292" class="ctext">HC-SR04 #2 - Level sensor A</text>
+  <text x="74" y="310" class="cnote">Under the lid, front-left, pointing DOWN</text>
+  <text x="74" y="332" class="pin">VCC  TRIG  ECHO  GND</text>
+
+  <!-- ===================== HC-SR04 #3 : LEVEL B ===================== -->
+  <rect x="56" y="380" width="238" height="100" rx="12" class="inbin"/>
+  <text x="74" y="404" class="tag">INSIDE THE BIN</text>
+  <text x="74" y="424" class="ctext">HC-SR04 #3 - Level sensor B</text>
+  <text x="74" y="442" class="cnote">Under the lid, rear-right, pointing DOWN</text>
+  <text x="74" y="464" class="pin">VCC  TRIG  ECHO  GND</text>
+
+  <!-- ===================== SERVO ===================== -->
+  <rect x="56" y="512" width="238" height="86" rx="12" class="comp"/>
+  <text x="74" y="538" class="ctext">SG90 Servo motor</text>
+  <text x="74" y="556" class="cnote">Lifts the lid: 0 deg closed, 90 deg open</text>
+  <text x="74" y="578" class="pin">ORANGE=PWM  RED=V+  BROWN=GND</text>
+
+  <!-- ===================== BUZZER ===================== -->
+  <rect x="56" y="630" width="238" height="76" rx="12" class="comp"/>
+  <text x="74" y="656" class="ctext">Active buzzer</text>
+  <text x="74" y="674" class="cnote">Short beep when the bin is 90% full</text>
+  <text x="74" y="694" class="pin">+ (long leg)     - (short leg)</text>
+
+  <!-- ===================== LEDs ===================== -->
+  <rect x="840" y="120" width="264" height="112" rx="12" class="comp"/>
+  <text x="858" y="146" class="ctext">Green LED - status OK</text>
+  <text x="858" y="166" class="cnote">GPIO26 to 220R to anode (long leg)</text>
+  <text x="858" y="184" class="cnote">cathode (short leg) to GND</text>
+  <circle cx="1042" cy="206" r="12" fill="#34c759"/>
+  <text x="858" y="211" class="cnote">Lit while the bin is under 75%</text>
+
+  <rect x="840" y="256" width="264" height="112" rx="12" class="comp"/>
+  <text x="858" y="282" class="ctext">Red LED - full alert</text>
+  <text x="858" y="302" class="cnote">GPIO27 to 220R to anode (long leg)</text>
+  <text x="858" y="320" class="cnote">cathode (short leg) to GND</text>
+  <circle cx="1042" cy="342" r="12" fill="#ff3b30"/>
+  <text x="858" y="347" class="cnote">Blinks at 75%, solid at 90%</text>
+
+  <!-- ===================== LCD ===================== -->
+  <rect x="840" y="392" width="264" height="106" rx="12" class="comp"/>
+  <text x="858" y="418" class="ctext">16x2 LCD with I2C backpack</text>
+  <text x="858" y="436" class="cnote">Optional - comment out USE_LCD to skip</text>
+  <text x="858" y="458" class="pin">GND  VCC  SDA  SCL</text>
+  <text x="858" y="478" class="cnote">Address 0x27 (some modules use 0x3F)</text>
+
+  <!-- ===================== FUSION EXPLAINER ===================== -->
+  <rect x="840" y="522" width="264" height="184" rx="12" fill="#f5f5f7"/>
+  <text x="858" y="548" class="ctext">Why two sensors inside?</text>
+  <path d="M866 574 h100" stroke="#0071e3" stroke-width="1.5" fill="none"/>
+  <path d="M866 574 l0 -6 M900 574 l0 -6" stroke="#0071e3" stroke-width="1.2"/>
+  <text x="978" y="578" class="cnote">A and B look down</text>
+  <path d="M866 596 q26 -14 52 6 t52 8" stroke="#ff9500" stroke-width="2" fill="none"/>
+  <text x="858" y="620" class="cnote">Rubbish is never flat. One sensor over</text>
+  <text x="858" y="637" class="cnote">a peak reads FULL while the bin is half</text>
+  <text x="858" y="654" class="cnote">empty. Two diagonals are averaged, and</text>
+  <text x="858" y="671" class="cnote">a big A-vs-B gap flags an uneven load.</text>
+  <text x="858" y="694" class="cnote">If one fails, the bin runs on the other.</text>
+
+  <!-- ===================== WIRES ===================== -->
+  <path d="M294 150 C 360 150, 390 324, 444 326" class="wire" stroke="#34c759"/>
+  <text x="330" y="196" class="wlabel" fill="#248a3d">TRIG - GPIO5</text>
+  <path d="M294 168 C 366 168, 390 350, 444 352" class="wire" stroke="#0071e3"/>
+  <text x="330" y="232" class="wlabel" fill="#0071e3">ECHO - GPIO18</text>
+
+  <path d="M294 300 C 360 300, 392 376, 444 378" class="wire" stroke="#ff9500"/>
+  <text x="330" y="296" class="wlabel" fill="#c93400">A TRIG - GPIO19</text>
+  <path d="M294 318 C 366 318, 392 402, 444 404" class="wire" stroke="#af52de"/>
+  <text x="330" y="342" class="wlabel" fill="#8944ab">A ECHO - GPIO23</text>
+
+  <path d="M294 432 C 360 432, 392 482, 444 484" class="wire" stroke="#ffcc00"/>
+  <text x="330" y="428" class="wlabel" fill="#a16207">B TRIG - GPIO32</text>
+  <path d="M294 450 C 366 450, 392 508, 444 510" class="wire" stroke="#5856d6"/>
+  <text x="330" y="474" class="wlabel" fill="#3634a3">B ECHO - GPIO33</text>
+
+  <path d="M294 544 C 360 544, 400 438, 444 436" class="wire" stroke="#ff9f0a"/>
+  <text x="336" y="524" class="wlabel" fill="#a16207">PWM - GPIO13</text>
+
+  <path d="M294 660 C 360 660, 404 464, 444 460" class="wire" stroke="#8e5b3a"/>
+  <text x="336" y="620" class="wlabel" fill="#7a4a2c">buzzer + - GPIO25</text>
+
+  <path d="M700 538 C 762 538, 782 180, 838 180" class="wire" stroke="#34c759"/>
+  <text x="712" y="300" class="wlabel" fill="#248a3d">GPIO26 - 220R</text>
+  <path d="M700 564 C 766 564, 784 316, 838 316" class="wire" stroke="#ff3b30"/>
+  <text x="712" y="440" class="wlabel" fill="#d70015">GPIO27 - 220R</text>
+
+  <path d="M700 378 C 760 378, 790 452, 838 452" class="wire" stroke="#0071e3"/>
+  <text x="720" y="370" class="wlabel" fill="#0071e3">GPIO21 SDA</text>
+  <path d="M700 404 C 766 404, 792 470, 838 470" class="wire" stroke="#5856d6"/>
+  <text x="720" y="500" class="wlabel" fill="#3634a3">GPIO22 SCL</text>
+
+  <path d="M294 132 C 380 100, 720 96, 720 322 L 700 326" class="wire" stroke="#ff3b30" stroke-dasharray="7 5"/>
+  <text x="452" y="94" class="wlabel" fill="#d70015">5 V rail - every VCC pin</text>
+  <path d="M294 348 C 400 740, 660 740, 700 558" class="wire" stroke="#1d1d1f" stroke-dasharray="7 5"/>
+  <text x="420" y="736" class="wlabel" fill="#1d1d1f">GND rail - every GND pin</text>
+
+  <!-- ===================== LEGEND ===================== -->
+  <rect x="56" y="734" width="1048" height="94" rx="12" fill="#f5f5f7"/>
+  <text x="76" y="757" class="legend" font-weight="700">Wiring rules</text>
+  <text x="76" y="776" class="legend">1. All VCC pins go to the 5 V rail and all GND pins to the GND rail. A shared ground is what makes every signal readable.</text>
+  <text x="76" y="793" class="legend">2. Each LED needs a 220 ohm resistor. The two level sensors are fired 12 ms apart so they never hear each other.</text>
+  <text x="76" y="810" class="legend" fill="#d70015" font-weight="700">3. REAL HARDWARE: the HC-SR04 ECHO pin outputs 5 V and ESP32 GPIOs are 3.3 V only. Put a 1k/2k divider on EACH of the three ECHO lines.</text>
+</svg>
