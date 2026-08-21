@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Dustbin - Industry Oriented Embedded System</title>
+  <meta name="description" content="Touchless smart dustbin with automatic lid control, ultrasonic waste level monitoring and city-wide fleet tracking. Arduino UNO and ESP32 embedded system project.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container inner">
+    <a class="brand" href="index.html">
+      <span class="logo">🗑️</span>
+      <span>Smart Dustbin<small>Embedded System</small></span>
+    </a>
+    <nav class="nav">
+      <a href="#live" class="active">Live city map</a>
+      <a href="#how">How it works</a>
+      <a href="#tech">Technology</a>
+      <a href="#project">Project</a>
+      <a href="login.html" class="btn btn-sm btn-primary" style="margin-left:.4rem">Admin login</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ================================================================ HERO -->
+<section class="container hero">
+  <span class="eyebrow">Smart Dustbin</span>
+  <h1>It opens by itself.<br>And it tells the city<br>when it is full.</h1>
+  <p>
+    Three ultrasonic sensors, one servo motor and an Arduino UNO. One sensor
+    watches the front and lifts the lid before you touch it. Two more sit
+    inside and measure the waste from opposite corners, so an uneven pile of
+    rubbish never fools the reading.
+  </p>
+  <div class="cta">
+    <a href="#live" class="btn btn-primary">See the live city map</a>
+    <a href="login.html" class="btn">Open the admin console</a>
+  </div>
+</section>
+
+<!-- ============================================================ LIVE DATA -->
+<section class="container section" id="live">
+  <h2>Live city status</h2>
+  <p>Every bin reports its fill level. Anything above 90% is flagged for immediate collection.</p>
+
+  <div class="kpi-grid" style="margin-bottom:1.25rem">
+    <div class="kpi is-info"><div class="label">Bins deployed</div><div class="value" id="kTotal">-</div><div class="sub">across 10 zones</div></div>
+    <div class="kpi is-ok"><div class="label">Normal</div><div class="value" id="kOk">-</div><div class="sub">below 75% full</div></div>
+    <div class="kpi is-warn"><div class="label">Near full</div><div class="value" id="kWarn">-</div><div class="sub">75% to 89%</div></div>
+    <div class="kpi is-full"><div class="label">Needs collection</div><div class="value" id="kFull">-</div><div class="sub">90% and above</div></div>
+    <div class="kpi"><div class="label">Average fill</div><div class="value" id="kAvg">-</div><div class="sub">city wide</div></div>
+  </div>
+
+  <div class="map-wrap" style="margin-bottom:1.25rem">
+    <div id="publicMap"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <h3>All bins</h3>
+      <span class="muted" id="lastUpdate">updating...</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bin</th><th>Location</th><th>Zone</th><th>Type</th>
+            <th style="width:170px">Fill level</th><th>Status</th><th>Last seen</th>
+          </tr>
+        </thead>
+        <tbody id="publicBinRows"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= HOW IT WORKS -->
+<section class="container section" id="how">
+  <h2>How it works</h2>
+  <p>Eight steps, from a hand approaching the bin to a van being dispatched.</p>
+
+  <div class="flow" style="margin:1.5rem 0 2rem">
+    <span class="step">1. Hand approaches</span><span class="arrow">→</span>
+    <span class="step">2. Ultrasonic sensor</span><span class="arrow">→</span>
+    <span class="step">3. Microcontroller</span><span class="arrow">→</span>
+    <span class="step">4. Servo motor</span><span class="arrow">→</span>
+    <span class="step">5. Lid opens</span><span class="arrow">→</span>
+    <span class="step">6. Level sensor</span><span class="arrow">→</span>
+    <span class="step">7. Full-bin alert</span><span class="arrow">→</span>
+    <span class="step">8. LED / buzzer / dashboard</span>
+  </div>
+
+  <div class="cols-3">
+    <div class="card">
+      <h3>Touchless lid</h3>
+      <p>An HC-SR04 sensor measures the distance to whatever is in front of the bin
+         many times a second. Under 25&nbsp;cm, the microcontroller drives a servo
+         to 90&deg; and the lid lifts. Nobody touches a dirty surface.</p>
+    </div>
+    <div class="card">
+      <h3>Two sensors inside</h3>
+      <p>Rubbish is never flat. One sensor over a peak would shout "full" while
+         the bin is half empty. Two sensors on opposite diagonals are averaged,
+         so a 15 cm gap in a 30 cm bin really does mean half full &mdash; and a
+         big disagreement between them flags a load piled to one side.</p>
+    </div>
+    <div class="card">
+      <h3>Alerts that mean something</h3>
+      <p>Green under 75%. Amber blink from 75%. Solid red plus a short beep at 90%,
+         and the bin appears in red on the city map so a van is routed to it before
+         rubbish ends up on the pavement.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= INDUSTRY -->
+<section class="container section">
+  <h2>Where this is used</h2>
+  <p>The same design scales from a single classroom bin to a municipal fleet.</p>
+  <div class="cols-3">
+    <div class="card"><h3>Hospitals</h3><p>Touchless disposal cuts a contamination path in wards and corridors. Full-bin alerts keep clinical waste from overflowing.</p></div>
+    <div class="card"><h3>Airports and stations</h3><p>Very high footfall, very uneven filling. Level data tells cleaning staff which of 400 bins actually needs attention right now.</p></div>
+    <div class="card"><h3>Malls and offices</h3><p>Fewer pointless inspection rounds. Housekeeping is dispatched by data instead of by a fixed timetable.</p></div>
+    <div class="card"><h3>Smart cities</h3><p>Collection routes are planned from live fill levels, which cuts fuel, vehicle hours and missed pickups.</p></div>
+    <div class="card"><h3>Campuses</h3><p>A cheap, visible sustainability project that students can maintain and extend themselves.</p></div>
+    <div class="card"><h3>Industrial sites</h3><p>Segregated waste streams are monitored separately, which supports compliance reporting and audits.</p></div>
+  </div>
+</section>
+
+<!-- ================================================================= TECH -->
+<section class="container section" id="tech">
+  <h2>Technology</h2>
+  <div class="cols-2">
+    <div class="card">
+      <h3>Hardware</h3>
+      <div class="table-wrap" style="border:none">
+        <table style="min-width:auto">
+          <tbody>
+            <tr><td><b>Controller</b></td><td>Arduino UNO (ATmega328P) or ESP32</td></tr>
+            <tr><td><b>Sensors</b></td><td>3 &times; HC-SR04 &mdash; 1 hand, 2 in-bin</td></tr>
+            <tr><td><b>Actuator</b></td><td>SG90 servo motor, PWM controlled</td></tr>
+            <tr><td><b>Indicators</b></td><td>Green LED, red LED, active buzzer</td></tr>
+            <tr><td><b>Display</b></td><td>16&times;2 I2C LCD (optional)</td></tr>
+            <tr><td><b>Power</b></td><td>5 V / 2 A supply or 4&times;AA pack</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Firmware</h3>
+      <div class="table-wrap" style="border:none">
+        <table style="min-width:auto">
+          <tbody>
+            <tr><td><b>Language</b></td><td>Embedded C / C++ (Arduino)</td></tr>
+            <tr><td><b>Architecture</b></td><td>Non-blocking cooperative scheduler</td></tr>
+            <tr><td><b>Lid control</b></td><td>4-state machine with safety re-open</td></tr>
+            <tr><td><b>Filtering</b></td><td>Median-of-3, then dual-sensor fusion</td></tr>
+            <tr><td><b>Telemetry</b></td><td>Human + JSON lines over UART</td></tr>
+            <tr><td><b>Simulation</b></td><td>Wokwi, Tinkercad, browser twin</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== PROJECT -->
+<section class="container section" id="project">
+  <div class="card">
+    <h2>About this project</h2>
+    <p>
+      <b>Smart Dustbin - Industry Oriented Embedded System</b> is an academic project that
+      covers the full path from a sensor pulse to a city dashboard: GPIO, PWM, ultrasonic
+      timing, threshold logic, state machines, calibration, testing and a management console.
+      Everything runs in simulation, so no hardware is required to reproduce the results.
+    </p>
+    <div class="row" style="margin-top:1rem">
+      <a class="btn btn-primary" href="login.html">Admin console</a>
+      <a class="btn" href="../README.md">Project README</a>
+      <a class="btn" href="https://wokwi.com" target="_blank" rel="noopener">Wokwi simulator</a>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="container inner">
+    <div>Smart Dustbin &middot; Embedded Systems Project &middot; Built by <b>Nischay</b></div>
+    <div>Malla Reddy College of Engineering and Technology</div>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/map.js"></script>
+<script src="assets/js/public.js"></script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard - Smart Dustbin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- Route guard: runs before anything is drawn. -->
+<script src="assets/js/auth.js"></script>
+<script>AUTH.requireAuth("login.html");</script>
+
+<header class="site-header">
+  <div class="container inner">
+    <a class="brand" href="admin.html">
+      <span class="logo">🗑️</span>
+      <span>Smart Dustbin<small>Admin Console</small></span>
+    </a>
+    <nav class="nav">
+      <a href="#fleet">Fleet</a>
+      <a href="#simulation">Simulation</a>
+      <a href="#device">Live device</a>
+      <a href="index.html">Public site</a>
+      <span class="muted" style="margin:0 .5rem" id="whoami"></span>
+      <button class="btn btn-sm" id="logoutBtn">Sign out</button>
+    </nav>
+  </div>
+</header>
+
+<main class="container" style="padding:1.5rem 0 3rem">
+
+  <!-- ============================================================== KPIs -->
+  <div class="kpi-grid" style="margin-bottom:1rem">
+    <div class="kpi is-info"><div class="label">Total bins</div><div class="value" id="kTotal">-</div><div class="sub" id="kZones">-</div></div>
+    <div class="kpi is-ok"><div class="label">Normal</div><div class="value" id="kOk">-</div><div class="sub">under 75%</div></div>
+    <div class="kpi is-warn"><div class="label">Near full</div><div class="value" id="kWarn">-</div><div class="sub">75-89%</div></div>
+    <div class="kpi is-full"><div class="label">Collection due</div><div class="value" id="kFull">-</div><div class="sub">90% and above</div></div>
+    <div class="kpi"><div class="label">Offline</div><div class="value" id="kOffline">-</div><div class="sub">no telemetry</div></div>
+    <div class="kpi"><div class="label">Average fill</div><div class="value" id="kAvg">-</div><div class="sub">online bins</div></div>
+  </div>
+
+  <!-- ================================================= MAP + CONTROL PANEL -->
+  <div class="dash-layout" style="margin-bottom:1rem">
+
+    <div class="card" style="padding:1rem">
+      <div class="card-title">
+        <h3>🗺️ City map <span class="muted" style="font-weight:400">- click a bin to control it</span></h3>
+        <div class="row-tight">
+          <select id="zoneFilter" style="width:auto;padding:.35rem .6rem;font-size:.85rem">
+            <option value="">All zones</option>
+          </select>
+          <button class="btn btn-sm" id="fitBtn">Fit all</button>
+        </div>
+      </div>
+      <div class="map-wrap"><div id="map"></div></div>
+      <div class="row-tight" style="margin-top:.75rem;font-size:.8rem;color:var(--text-dim)">
+        <span><span class="badge badge-ok"><span class="dot"></span>Normal</span></span>
+        <span><span class="badge badge-warning"><span class="dot"></span>Near full</span></span>
+        <span><span class="badge badge-full"><span class="dot"></span>Full</span></span>
+        <span><span class="badge badge-offline"><span class="dot"></span>Offline</span></span>
+      </div>
+    </div>
+
+    <div class="stack">
+      <!-- selected bin -->
+      <div class="card" id="controlPanel">
+        <div class="card-title">
+          <h3 id="selName">No bin selected</h3>
+        </div>
+        <div id="selEmpty" class="muted">
+          Select a bin on the map or in the table below to see its live readings
+          and send commands to it.
+        </div>
+
+        <div id="selBody" class="hidden">
+          <div class="row-tight" style="margin-bottom:.8rem">
+            <span class="badge" id="selBadge"><span class="dot"></span></span>
+            <span class="muted" id="selMeta"></span>
+          </div>
+
+          <div class="fill-bar" style="height:12px"><span id="selFillBar"></span></div>
+          <div class="row" style="justify-content:space-between;margin:.35rem 0 1rem">
+            <span class="muted">Fill level</span>
+            <b id="selFillText">-</b>
+          </div>
+
+          <div class="readout" style="margin-bottom:1rem">
+            <div><div class="k">Lid</div><div class="v" id="selLid">-</div></div>
+            <div><div class="k">Sensor gap</div><div class="v" id="selDist">-</div></div>
+            <div><div class="k">Battery</div><div class="v" id="selBatt">-</div></div>
+            <div><div class="k">Signal</div><div class="v" id="selRssi">-</div></div>
+            <div><div class="k">Lid opens</div><div class="v" id="selOpens">-</div></div>
+            <div><div class="k">Last seen</div><div class="v" id="selSeen" style="font-size:.95rem">-</div></div>
+          </div>
+
+          <div class="k" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;
+                                color:var(--text-faint);font-weight:700;margin-bottom:.4rem">
+            Remote control
+          </div>
+          <div class="row-tight" style="margin-bottom:.6rem">
+            <button class="btn btn-sm" data-cmd="OPEN">Open lid</button>
+            <button class="btn btn-sm" data-cmd="CLOSE">Close lid</button>
+            <button class="btn btn-sm" data-cmd="AUTO">Auto mode</button>
+          </div>
+          <div class="row-tight" style="margin-bottom:.6rem">
+            <button class="btn btn-sm btn-warn" data-cmd="MUTE">Mute buzzer</button>
+            <button class="btn btn-sm" data-cmd="UNMUTE">Unmute</button>
+            <button class="btn btn-sm" data-cmd="PING">Ping device</button>
+          </div>
+          <button class="btn btn-sm btn-primary btn-block" data-cmd="EMPTY">
+            ✓ Mark as collected
+          </button>
+        </div>
+      </div>
+
+      <!-- bulk actions -->
+      <div class="card">
+        <div class="card-title"><h3>⚡ Fleet actions</h3></div>
+        <div class="row-tight">
+          <button class="btn btn-sm" id="bulkMute">Mute every full bin</button>
+          <button class="btn btn-sm" id="bulkRoute">Plan collection route</button>
+          <button class="btn btn-sm btn-danger" id="resetDemo">Reset demo data</button>
+        </div>
+        <div id="routeOut" class="muted" style="margin-top:.7rem"></div>
+      </div>
+
+      <!-- activity -->
+      <div class="card">
+        <div class="card-title"><h3>🔔 Activity</h3><span class="muted" id="logCount"></span></div>
+        <div id="activityFeed" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= FLEET -->
+  <div class="card" id="fleet" style="margin-bottom:1rem">
+    <div class="card-title">
+      <h3>📋 Fleet inventory</h3>
+      <div class="row-tight">
+        <input type="text" id="search" placeholder="Search bin, location or zone"
+               style="width:230px;padding:.35rem .6rem;font-size:.85rem">
+        <select id="statusFilter" style="width:auto;padding:.35rem .6rem;font-size:.85rem">
+          <option value="">All statuses</option>
+          <option value="ok">Normal</option>
+          <option value="warning">Near full</option>
+          <option value="full">Full</option>
+          <option value="offline">Offline</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Bin</th><th>Location</th><th>Zone</th><th>Type</th>
+            <th style="width:160px">Fill</th><th>Lid</th><th>Battery</th>
+            <th>Status</th><th>Last seen</th><th>Control</th>
+          </tr>
+        </thead>
+        <tbody id="binRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ======================================================== SIMULATION -->
+  <section id="simulation" class="stack" style="margin-bottom:1rem">
+    <div class="card">
+      <div class="card-title">
+        <h3>🔬 Live firmware simulation</h3>
+        <span class="muted">same thresholds as the Arduino sketch</span>
+      </div>
+      <p style="margin-bottom:1rem">
+        Three sliders, three ultrasonic sensors. The first is on the front of
+        the bin - move it under 25 cm and the lid opens. Sensors <b>A</b> and
+        <b>B</b> sit <b>inside</b> the bin on opposite diagonals; their readings
+        are averaged, so an uneven pile no longer fools the fill level. Set them
+        far apart to see the uneven-load flag appear. The state machine, the
+        fusion rule and the serial output are a direct port of
+        <code>04_smart_dustbin_complete.ino</code>.
+      </p>
+
+      <div class="twin">
+        <div id="dustbinView"></div>
+
+        <div class="stack">
+          <div>
+            <label class="field" style="margin-bottom:.6rem">
+              <span>Sensor 1 - distance to hand: <b id="handVal">80.0 cm</b></span>
+              <input type="range" id="handSlider" min="2" max="80" step="0.5" value="80">
+            </label>
+            <div class="row-tight" style="margin-bottom:1rem">
+              <button class="btn btn-sm" data-hand="10">👋 Wave a hand (10 cm)</button>
+              <button class="btn btn-sm" data-hand="80">Step away (80 cm)</button>
+            </div>
+
+            <label class="field" style="margin-bottom:.6rem">
+              <span>Sensor A (inside, front-left): <b id="wasteValA">30.0 cm</b>
+                    &rarr; <b id="fillValA">0%</b></span>
+              <input type="range" id="wasteSliderA" min="0" max="30" step="0.5" value="30">
+            </label>
+
+            <label class="field" style="margin-bottom:.6rem">
+              <span>Sensor B (inside, rear-right): <b id="wasteValB">30.0 cm</b>
+                    &rarr; <b id="fillValB">0%</b></span>
+              <input type="range" id="wasteSliderB" min="0" max="30" step="0.5" value="30">
+            </label>
+
+            <div class="row-tight" style="margin-bottom:.5rem">
+              <button class="btn btn-sm" data-fill="0">Empty</button>
+              <button class="btn btn-sm" data-fill="25">25%</button>
+              <button class="btn btn-sm" data-fill="50">50%</button>
+              <button class="btn btn-sm" data-fill="75">75%</button>
+              <button class="btn btn-sm" data-fill="90">90%</button>
+              <button class="btn btn-sm" data-fill="100">Full</button>
+            </div>
+            <div class="row-tight">
+              <button class="btn btn-sm btn-warn" data-scenario="uneven">Uneven pile (A 90 / B 10)</button>
+              <button class="btn btn-sm btn-warn" data-scenario="failA">Unplug sensor A</button>
+              <button class="btn btn-sm" data-scenario="reset">Reset sensors</button>
+            </div>
+          </div>
+
+          <div class="readout">
+            <div><div class="k">Lid state</div><div class="v" id="twinLid">CLOSED</div></div>
+            <div><div class="k">Bin status</div><div class="v" id="twinStatus">OK</div></div>
+            <div><div class="k">Fused fill</div><div class="v" id="twinFill">0%</div></div>
+            <div><div class="k">A / B spread</div><div class="v" id="twinSpread">0%</div></div>
+            <div><div class="k">Sensors live</div><div class="v" id="twinSensors">2 / 2</div></div>
+            <div><div class="k">Green LED</div><div class="v" id="twinGreen">ON</div></div>
+            <div><div class="k">Red LED</div><div class="v" id="twinRed">OFF</div></div>
+            <div><div class="k">Buzzer</div><div class="v" id="twinBuzzer">SILENT</div></div>
+            <div><div class="k">Lid opens</div><div class="v" id="twinOpens">0</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-title" style="margin:1.25rem 0 .5rem">
+        <h3 style="font-size:.95rem">Serial Monitor (9600 baud)</h3>
+        <button class="btn btn-sm" id="clearConsole">Clear</button>
+      </div>
+      <div class="console" id="serialConsole"></div>
+      <div class="row" style="margin-top:.6rem">
+        <input type="text" id="cmdInput" placeholder="Type a command: OPEN, CLOSE, AUTO, MUTE, UNMUTE, EMPTY, STATUS, HELP"
+               style="flex:1;min-width:220px">
+        <button class="btn btn-primary" id="cmdSend">Send</button>
+      </div>
+    </div>
+
+    <!-- Wokwi embed -->
+    <div class="card">
+      <div class="card-title">
+        <h3>🧪 Wokwi hardware simulation</h3>
+        <span class="muted">runs the real compiled firmware</span>
+      </div>
+      <p>
+        The panel above is a JavaScript twin. This one runs the actual AVR machine
+        code on a simulated ATmega328P with the real HC-SR04, servo, LEDs and LCD.
+        Paste your Wokwi project ID once and it is remembered in this browser.
+      </p>
+      <div class="row" style="margin-bottom:.9rem">
+        <input type="text" id="wokwiId" placeholder="Wokwi project ID, for example 123456789012345678"
+               style="flex:1;min-width:220px">
+        <button class="btn btn-primary" id="wokwiLoad">Load</button>
+        <a class="btn" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" rel="noopener">
+          Create on Wokwi
+        </a>
+      </div>
+      <div id="wokwiHolder">
+        <div style="padding:2rem;text-align:center;border:1px dashed var(--border);border-radius:var(--radius)">
+          <p style="margin:0">
+            No Wokwi project loaded yet.<br>
+            Upload <code>simulation/wokwi/diagram.json</code> and
+            <code>sketch.ino</code> to wokwi.com, then paste the ID above.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= LIVE DEVICE -->
+  <div class="card" id="device" style="margin-bottom:1rem">
+    <div class="card-title">
+      <h3>📡 Connect a real device</h3>
+      <span class="muted">ESP32 firmware, option C</span>
+    </div>
+    <p>
+      Flash <code>arduino_code/05_esp32_wifi_version</code> to an ESP32 on the same
+      Wi-Fi network. It prints its IP address on the serial monitor. Paste that
+      address here and this dashboard reads
+      <code>/api/status</code> from the board itself instead of the demo data.
+    </p>
+    <div class="row" style="margin-bottom:.8rem">
+      <input type="text" id="deviceIp" placeholder="192.168.1.42" style="flex:1;min-width:180px">
+      <button class="btn btn-primary" id="deviceConnect">Connect</button>
+      <button class="btn" id="deviceStop">Stop</button>
+    </div>
+    <div id="deviceOut" class="console" style="height:130px">Not connected.</div>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container inner">
+    <div>Smart Dustbin admin console &middot; demo data stored in this browser</div>
+    <div>Signed in as <b id="footUser">-</b></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/map.js"></script>
+<script src="assets/js/sim.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

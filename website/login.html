@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Login - Smart Dustbin</title>
+  <meta name="description" content="Administrator sign in for the Smart Dustbin city management console.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<main class="login-page">
+  <div class="login-card card">
+
+    <div class="logo-big">🗑️</div>
+    <h2 style="text-align:center;margin-bottom:.25rem">Admin Console</h2>
+    <p style="text-align:center;font-size:.9rem;margin-bottom:1.5rem">
+      Smart Dustbin &middot; City Waste Management
+    </p>
+
+    <div id="loginError" class="login-error" role="alert"></div>
+
+    <form id="loginForm" autocomplete="off" novalidate>
+      <label class="field">
+        <span>Username</span>
+        <input type="text" id="username" name="username" placeholder="Enter username"
+               autocomplete="username" required autofocus>
+      </label>
+
+      <label class="field">
+        <span>Password</span>
+        <input type="password" id="password" name="password" placeholder="Enter password"
+               autocomplete="current-password" required>
+      </label>
+
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.87rem;
+                    color:var(--text-dim);margin-bottom:1.1rem;cursor:pointer">
+        <input type="checkbox" id="showPass" style="width:auto;accent-color:var(--brand)">
+        Show password
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+        Sign in to dashboard
+      </button>
+    </form>
+
+    <div class="hint">
+      <b>Demo credentials</b><br>
+      Username: <code>Nischay</code><br>
+      Password: <code>Admin@123</code>
+    </div>
+
+    <p style="text-align:center;margin:1.2rem 0 0;font-size:.86rem">
+      <a href="index.html">&larr; Back to the public site</a>
+    </p>
+  </div>
+</main>
+
+<script src="assets/js/auth.js"></script>
+<script>
+  /* Already signed in? Skip the form. */
+  if (AUTH.isLoggedIn()) window.location.replace("admin.html");
+
+  const form    = document.getElementById("loginForm");
+  const errBox  = document.getElementById("loginError");
+  const btn     = document.getElementById("loginBtn");
+
+  document.getElementById("showPass").addEventListener("change", function () {
+    document.getElementById("password").type = this.checked ? "text" : "password";
+  });
+
+  function showError(msg) {
+    errBox.textContent = msg;
+    errBox.classList.add("show");
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    errBox.classList.remove("show");
+
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value;
+
+    if (!user || !pass) { showError("Please enter both a username and a password."); return; }
+
+    btn.disabled = true;
+    btn.textContent = "Signing in...";
+
+    /* A short delay so the button state is visible, the way a real
+       network round trip would feel. */
+    setTimeout(function () {
+      const result = AUTH.login(user, pass);
+
+      if (result.ok) {
+        window.location.href = "admin.html";
+      } else {
+        showError(result.message);
+        document.getElementById("password").value = "";
+        document.getElementById("password").focus();
+        btn.disabled = false;
+        btn.textContent = "Sign in to dashboard";
+      }
+    }, 350);
+  });
+</script>
+</body>
+</html>
