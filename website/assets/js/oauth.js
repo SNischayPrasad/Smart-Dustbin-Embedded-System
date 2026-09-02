@@ -146,17 +146,11 @@ const GoogleAuth = (function () {
     return payload;
   }
 
-  /* ---- authorisation: who is allowed to be an administrator ----------- */
-
-  function isAllowed(email) {
-    const list = AUTH_CONFIG.ALLOWED_EMAILS || [];
-    if (list.length === 0) return true;          /* open demo */
-    return list.map(e => e.toLowerCase()).indexOf(String(email).toLowerCase()) !== -1;
-  }
-
-  function allowlistIsOpen() {
-    return !AUTH_CONFIG.ALLOWED_EMAILS || AUTH_CONFIG.ALLOWED_EMAILS.length === 0;
-  }
+  /* Authorisation - who may sign in and with what role - is deliberately
+     NOT here. This file answers only "is this token genuinely Google's?".
+     users.js answers "and is this person allowed in?". Keeping the two
+     apart is the whole distinction between authentication and
+     authorisation, and it makes each testable on its own.               */
 
   function isConfigured() {
     return !!(AUTH_CONFIG.GOOGLE_CLIENT_ID && AUTH_CONFIG.GOOGLE_CLIENT_ID.trim());
@@ -164,8 +158,6 @@ const GoogleAuth = (function () {
 
   return {
     verifyIdToken: verifyIdToken,
-    isAllowed: isAllowed,
-    allowlistIsOpen: allowlistIsOpen,
     isConfigured: isConfigured,
     _b64urlToString: b64urlToString
   };

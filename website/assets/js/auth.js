@@ -32,9 +32,14 @@
 
 const AUTH = (function () {
 
-  /* ---- Demo credentials --------------------------------------------- */
+  /* ---- Demo credentials ----------------------------------------------
+     These are printed on the login page and in the README, so anyone can
+     use them. They therefore must NOT grant control of the fleet - this
+     account signs in with whatever role users.js sets for it, which is
+     "viewer" (read-only). Administrator access comes from Google sign-in
+     and the user registry.                                              */
   const USERS = [
-    { username: "Nischay", password: "Admin@123", name: "Nischay", role: "Administrator" }
+    { username: "Nischay", password: "Admin@123", name: "Demo visitor" }
   ];
 
   const SESSION_KEY  = "smartdustbin.session";
@@ -83,10 +88,13 @@ const AUTH = (function () {
 
     saveLock({ fails: 0, until: 0 });
 
+    const demoRole = (typeof USER_DB !== "undefined" && USER_DB.DEMO_LOGIN_ROLE)
+                     ? USER_DB.DEMO_LOGIN_ROLE : "viewer";
+
     return { ok: true, session: startSession({
       username: user.username,
       name:     user.name,
-      role:     user.role,
+      role:     demoRole,
       method:   "demo"
     }) };
   }
@@ -104,7 +112,7 @@ const AUTH = (function () {
       name:     identity.name || identity.username,
       email:    identity.email || null,
       picture:  identity.picture || null,
-      role:     identity.role || "Administrator",
+      role:     identity.role || "viewer",
       method:   identity.method || "demo",
       issued:   Date.now(),
       expires:  Date.now() + minutes * 60000

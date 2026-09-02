@@ -96,14 +96,79 @@ https://snischayprasad.github.io
 http://localhost:3000
 ```
 
-Optionally restrict who may sign in:
+### Who may sign in — the user registry
+
+`website/assets/js/users.js` holds the registry: who exists, and what each
+person may do.
+
+| Signed in as | Role | Can control bins |
+|---|---|---|
+| **nischayprasuna@gmail.com** (Google) | Administrator | **Yes** |
+| Demo credentials on the login page | Viewer | No |
+| Any other Google account | *refused* | — |
+
+Only one account has administrator access. Everyone else is either read-only
+or turned away, and `DEFAULT_ROLE_FOR_UNKNOWN: "deny"` is what makes an
+unrecognised Google account a refusal rather than a guest pass.
+
+**The demo login is deliberately read-only.** Its credentials are printed on
+the page and in this README, so anyone can use them — which means they must
+not command anything. A demo visitor sees the whole fleet, the map and the
+simulator, and every control is visibly disabled with an explanation. That
+keeps the public demo useful without handing out the keys.
+
+### The address is stored as a hash
+
+This repository is public, so committing a personal Gmail address in plain
+text hands it to every scraper that walks GitHub. The registry stores the
+SHA-256 of the lowercased address instead — sign in, hash what Google
+returns, compare:
 
 ```js
-ALLOWED_EMAILS: ["you@gmail.com"],
+{ emailHash: "007dda63…", name: "Nischay", role: "admin" }
 ```
 
-Leave it empty and any verified Google account is admitted — which is
-authentication without authorisation, and the page says so on screen.
+Be precise about what that achieves: it is **not** encryption and **not** a
+security control. Anyone who guesses the address can hash it and confirm the
+match. It defeats bulk harvesting, which is the realistic risk, and nothing
+more.
+
+Plain text works too if you prefer it readable:
+
+```js
+{ email: "you@gmail.com", name: "You", role: "admin" }
+```
+
+Generate a hash for any address with:
+
+```bash
+node tools/hash-email.js someone@example.com
+```
+
+### Adding people
+
+```js
+USERS: [
+  { emailHash: "007dda63…",          name: "Nischay",  role: "admin"  },
+  { email: "teammate@gmail.com",     name: "Teammate", role: "viewer" }
+]
+```
+
+Roles are defined at the top of the same file, so adding a third — an
+`operator` who may collect bins but not reset the demo, say — is a few lines.
+
+### Tested
+
+```bash
+node tests/users.test.js
+```
+
+30 assertions: the owner resolves to `admin` and is the only one; the address
+matches case-insensitively and with stray whitespace; near-miss addresses
+(`…@googlemail.com`, `…+admin@gmail.com`, a one-letter typo) are all refused;
+the plain address does **not** appear in the file; the demo login cannot
+control, bulk-act or reset; and an unknown role falls back to viewer rather
+than failing open.
 
 ### Why this flow, on a static host
 

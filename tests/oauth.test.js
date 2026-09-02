@@ -19,7 +19,6 @@ const { webcrypto } = nodeCrypto;
 global.self = { crypto: webcrypto };
 global.AUTH_CONFIG = {
   GOOGLE_CLIENT_ID: "test-client-id.apps.googleusercontent.com",
-  ALLOWED_EMAILS: [],
   GOOGLE_JWKS_URL: "https://example.invalid/certs",
   GOOGLE_ISSUERS: ["https://accounts.google.com", "accounts.google.com"],
   SESSION_MINUTES: 120
@@ -126,16 +125,12 @@ const verify = (t, opts) => GoogleAuth.verifyIdToken(
   await rejects("not valid yet (nbf)",    verify(makeToken({ payload: { nbf: now + 600 } })), "not valid yet");
   await rejects("unverified email",       verify(makeToken({ payload: { email_verified: false } })), "verified email");
 
-  console.log("\nAllowlist - authorisation, separate from authentication");
-  AUTH_CONFIG.ALLOWED_EMAILS = [];
-  check("empty allowlist admits anyone",  GoogleAuth.isAllowed("stranger@gmail.com"));
-  check("allowlistIsOpen is true",        GoogleAuth.allowlistIsOpen() === true);
-  AUTH_CONFIG.ALLOWED_EMAILS = ["Owner@Gmail.com"];
-  check("listed address admits",          GoogleAuth.isAllowed("owner@gmail.com"));
-  check("comparison is case-insensitive", GoogleAuth.isAllowed("OWNER@GMAIL.COM"));
-  check("unlisted address refused",      !GoogleAuth.isAllowed("stranger@gmail.com"));
-  check("allowlistIsOpen is false",       GoogleAuth.allowlistIsOpen() === false);
-  AUTH_CONFIG.ALLOWED_EMAILS = [];
+  console.log("\nSeparation of concerns");
+  check("the verifier does NOT decide who is allowed in",
+        typeof GoogleAuth.isAllowed === "undefined");
+  check("nor does it hold an allowlist",
+        typeof GoogleAuth.allowlistIsOpen === "undefined");
+  check("that decision lives in users.js - see tests/users.test.js", true);
 
   console.log("\nConfiguration gate");
   AUTH_CONFIG.GOOGLE_CLIENT_ID = "";

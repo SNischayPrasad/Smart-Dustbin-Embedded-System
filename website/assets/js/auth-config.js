@@ -33,14 +33,8 @@ const AUTH_CONFIG = {
      using the demo sign-in - nothing breaks. */
   GOOGLE_CLIENT_ID: "",
 
-  /* Optional allowlist. Only these Google accounts become administrators.
-     Leave the array empty to let ANY verified Google account in, which is
-     fine for a public demo but is authentication without authorisation -
-     the page says so when it applies.
-
-     Example:
-       ALLOWED_EMAILS: ["you@gmail.com", "teammate@gmail.com"],           */
-  ALLOWED_EMAILS: [],
+  /* WHO MAY SIGN IN is not configured here - it lives in users.js, which
+     holds the user registry with names, roles and permissions.           */
 
   /* Google's public signing keys. The ID token's signature is checked
      against these in the browser using WebCrypto. */

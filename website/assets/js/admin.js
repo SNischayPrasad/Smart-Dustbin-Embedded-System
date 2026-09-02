@@ -18,8 +18,26 @@
   const session = AUTH.currentSession();
   if (!session) return;                       /* the guard already redirected */
 
-  document.getElementById("whoami").textContent  = session.name + " (" + session.role + ")";
+  /* ---- role and permissions ------------------------------------------
+     The registry in users.js decides what this person may do. A viewer sees
+     everything and can change nothing; the controls are disabled rather
+     than hidden, so it is obvious the capability exists and is withheld. */
+  const perms = Users.permissions(session.role);
+  const roleLabel = Users.roleLabel(session.role);
+
+  document.getElementById("whoami").textContent  = session.name + " (" + roleLabel + ")";
   document.getElementById("footUser").textContent = session.username;
+
+  if (!perms.canControlBins) {
+    const banner = document.getElementById("readOnlyBanner");
+    if (banner) {
+      banner.innerHTML =
+        "<b>Read-only session.</b> You are signed in as <b>" + escapeHtml(roleLabel) +
+        "</b>, so fleet controls are disabled. Administrator access is granted " +
+        "through Google sign-in to accounts listed in the user registry.";
+      banner.classList.remove("hidden");
+    }
+  }
 
   /* A Google session carries a real profile picture; the demo one does not. */
   if (session.picture) {
@@ -134,8 +152,10 @@
     });
 
     document.querySelectorAll("[data-row-cmd]").forEach(function (btn) {
+      if (!perms.canControlBins) { btn.disabled = true; btn.title = "Read-only session"; }
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
+        if (!perms.canControlBins) { toast("Read-only session."); return; }
         const r = SD.sendCommand(btn.getAttribute("data-bin"), btn.getAttribute("data-row-cmd"));
         toast(btn.getAttribute("data-bin") + ": " + r.message);
         refresh();
@@ -205,7 +225,9 @@
   }
 
   document.querySelectorAll("[data-cmd]").forEach(function (btn) {
+    if (!perms.canControlBins) { btn.disabled = true; btn.title = "Read-only session"; }
     btn.addEventListener("click", function () {
+      if (!perms.canControlBins) { toast("Read-only session - control is not permitted."); return; }
       if (!selectedId) { toast("Select a bin first."); return; }
       const r = SD.sendCommand(selectedId, btn.getAttribute("data-cmd"));
       toast(selectedId + ": " + r.message);
@@ -217,6 +239,7 @@
      4. BULK FLEET ACTIONS
      =================================================================== */
   document.getElementById("bulkMute").addEventListener("click", function () {
+    if (!perms.canBulkAct) { toast("Read-only session."); return; }
     const n = SD.sendBulk("MUTE", b => SD.statusOf(b) === "full");
     toast(n ? "Muted " + n + " full bin(s)." : "No full bins right now.");
     refresh();
@@ -226,6 +249,7 @@
      drive to the closest bin still on the list. This is the classic greedy
      solution to the travelling salesman problem - good enough for a van. */
   document.getElementById("bulkRoute").addEventListener("click", function () {
+    if (!perms.canPlanRoute) { toast("Read-only session."); return; }
     const due = SD.getFleet()
       .filter(b => b.online && SD.statusOf(b) !== "ok")
       .sort((a, b) => b.fill - a.fill);
@@ -260,6 +284,7 @@
   });
 
   document.getElementById("resetDemo").addEventListener("click", function () {
+    if (!perms.canResetDemo) { toast("Read-only session."); return; }
     if (!confirm("Reset all demo bins to their starting values?")) return;
     SD.reset();
     selectedId = null;
@@ -267,6 +292,13 @@
     toast("Demo data reset.");
     refresh();
   });
+
+  if (!perms.canBulkAct) {
+    ["bulkMute", "resetDemo"].forEach(function (id) {
+      const b = document.getElementById(id);
+      if (b) { b.disabled = true; b.title = "Read-only session"; }
+    });
+  }
 
   document.getElementById("fitBtn").addEventListener("click", () => map.fitAll());
 

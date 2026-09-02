@@ -36,20 +36,25 @@
       const payload = await GoogleAuth.verifyIdToken(
         response.credential, AUTH_CONFIG.GOOGLE_CLIENT_ID);
 
-      /* Authentication succeeded. Authorisation is a separate question. */
-      if (!GoogleAuth.isAllowed(payload.email)) {
+      /* Authentication succeeded - Google confirmed who this is.
+         Authorisation is a separate question, answered by the registry. */
+      const decision = await Users.resolve(payload.email);
+
+      if (!decision.allowed) {
         setNote("");
-        showError(payload.email + " is not on the administrator allowlist.");
+        showError(payload.email + " is not in the user registry, so it has no " +
+                  "access to this console. Signing in with Google worked - you " +
+                  "are simply not on the list.");
         if (window.google) google.accounts.id.disableAutoSelect();
         return;
       }
 
       AUTH.startSession({
         username: payload.email,
-        name:     payload.name || payload.email,
+        name:     decision.name || payload.name || payload.email,
         email:    payload.email,
         picture:  payload.picture || null,
-        role:     GoogleAuth.allowlistIsOpen() ? "Guest (open demo)" : "Administrator",
+        role:     decision.role,
         method:   "google"
       });
 
@@ -74,9 +79,11 @@
         theme: "outline", size: "large", shape: "pill",
         text: "signin_with", width: 280, logo_alignment: "center"
       });
-      setNote(GoogleAuth.allowlistIsOpen()
-        ? "Any Google account may sign in - this demo has no allowlist set."
-        : "Only allowlisted Google accounts may sign in.");
+      const admins = Users.adminCount();
+      setNote(USER_DB.DEFAULT_ROLE_FOR_UNKNOWN === "deny"
+        ? "Only registered accounts may sign in &mdash; " + admins +
+          " administrator" + (admins === 1 ? "" : "s") + " configured."
+        : "Registered accounts get their role; anyone else signs in read-only.");
     } catch (e) {
       box.classList.add("hidden");
     }

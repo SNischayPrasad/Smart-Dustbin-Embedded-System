@@ -443,6 +443,20 @@ input[type=range]::-moz-range-thumb     { width: 22px; height: 22px; }
 }
 .demo-banner b { color: var(--text); font-weight: 600; }
 
+/* ---- read-only session banner ------------------------------------------ */
+.readonly-banner {
+  margin-bottom: 1rem;
+  padding: .85rem 1.1rem;
+  background: rgba(0,113,227,.07);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--radius-sm);
+  font-size: 14px; line-height: 1.55; color: var(--text-dim);
+}
+.readonly-banner b { color: var(--text); font-weight: 600; }
+
+/* A disabled control should look withheld, not broken. */
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
 /* ---- Google sign-in block ---------------------------------------------- */
 .google-box { margin-bottom: 1.25rem; }
 #googleButton { display: flex; justify-content: center; min-height: 44px; }

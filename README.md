@@ -5,7 +5,7 @@ and a live web dashboard for managing bins across a city.
 
 ![Platform](https://img.shields.io/badge/platform-ESP32%20%7C%20Arduino%20UNO-E7352C)
 ![Language](https://img.shields.io/badge/language-Embedded%20C%2FC%2B%2B-blue)
-![Tests](https://img.shields.io/badge/tests-91%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen)
 ![Build](https://img.shields.io/badge/ESP32%20build-75%25%20flash%20%7C%2014%25%20RAM-success)
 ![Simulation](https://img.shields.io/badge/hardware-not%20required-orange)
 
@@ -14,7 +14,7 @@ and a live web dashboard for managing bins across a city.
 | | |
 |---|---|
 | **Public city dashboard** | https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/ |
-| **Admin console** | [/login.html](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/login.html) — sign in with `Nischay` / `Admin@123` |
+| **Admin console** | [/login.html](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/login.html) — demo sign-in `Nischay` / `Admin@123` gives a **read-only** session; fleet control requires Google sign-in as a registered administrator |
 
 Inside the admin console, scroll to **Live firmware simulation** and press
 **Uneven pile (A 90 / B 10)** — that one button demonstrates the whole point
@@ -115,7 +115,9 @@ Full worked numbers in [docs/12-bin-level-calculation.md](docs/12-bin-level-calc
   a collection-route planner and an in-browser firmware simulator
 - **Sign in with Google** (OAuth 2.0 / OIDC) with the ID token's RS256
   signature verified in-browser against Google's JWKS — not just decoded
-- **91 automated tests**, including 27 that try to get forged JWTs accepted
+- **Role-based access** from a user registry — one named administrator; the
+  public demo login is read-only by design
+- **118 automated tests**, including 24 that try to get forged JWTs accepted
 
 ---
 
@@ -249,6 +251,10 @@ node tests/twin.test.js
 node tests/oauth.test.js
 ```
 
+```bash
+node tests/users.test.js
+```
+
 ---
 
 ## Sample output
@@ -296,7 +302,8 @@ Every sketch was compiled with `arduino-cli` against the real toolchains.
 | `src/` modular build (UNO) | 13,414 B flash (41 %) |
 | Compiler warnings (`--warnings all`) | none from project code |
 | `node tests/twin.test.js` | 64 passed, 0 failed |
-| `node tests/oauth.test.js` | 27 passed, 0 failed (forgery attempts all rejected) |
+| `node tests/oauth.test.js` | 24 passed, 0 failed (forgery attempts all rejected) |
+| `node tests/users.test.js` | 30 passed, 0 failed (access control) |
 | Wokwi ESP32 circuit import | 11 parts, 27 connections, all 16 board pins resolve |
 
 ---

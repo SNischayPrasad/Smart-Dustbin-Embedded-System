@@ -43,7 +43,8 @@ Smart-Dustbin-Embedded-System/
 │   └── assets/
 │       ├── css/style.css
 │       ├── js/data.js            Fleet data layer
-│       ├── js/auth-config.js     Google Client ID + allowlist (edit this)
+│       ├── js/auth-config.js     Google Client ID (edit this)
+│       ├── js/users.js           User registry: who may sign in, and as what
 │       ├── js/auth.js            Session handling and the demo login
 │       ├── js/oauth.js           Google ID token verification (WebCrypto)
 │       ├── js/oauth-ui.js        Google Sign-In button wiring
@@ -58,7 +59,8 @@ Smart-Dustbin-Embedded-System/
 │
 ├── tests/
 │   ├── twin.test.js              64 automated checks of the firmware logic
-│   └── oauth.test.js             27 checks that forged JWTs are rejected
+│   ├── oauth.test.js             24 checks that forged JWTs are rejected
+│   └── users.test.js             30 checks on access control
 │
 ├── data/                    Datasets and recorded results
 │   ├── bins.json                 Seed fleet of 16 bins
