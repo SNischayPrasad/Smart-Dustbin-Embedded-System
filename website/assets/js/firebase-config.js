@@ -24,6 +24,13 @@
    2. Build > Authentication > Get started > Sign-in method
       Enable "Google". Save.
 
+   2b. Authentication > Settings > Authorised domains > Add domain
+      Add:  snischayprasad.github.io
+      localhost is already there by default. Firebase refuses to complete a
+      sign-in from a domain that is not on this list, and the resulting
+      error mentions the domain rather than the setting, so it is an easy
+      half hour to lose.
+
    3. Build > Firestore Database > Create database
       Start in PRODUCTION mode, pick any region.
 
@@ -41,8 +48,13 @@
       from the repository root, replacing OWNER_UID_HERE with the same UID.
       Publish.
 
-   That last step is the one that matters. Without it the database is open
-   and anyone could add themselves.
+   Steps 2b and 6 are the ones people miss. Without 2b the sign-in fails on
+   the live site; without 6 the database is either shut (production mode) or
+   open to the world (test mode).
+
+   IF YOU CHOSE "TEST MODE" FOR FIRESTORE
+   Test mode allows anyone to read and write your database for 30 days. Do
+   not leave it that way - publish firestore.rules now.
    ========================================================================== */
 
 const FIREBASE_CONFIG = {
@@ -50,12 +62,14 @@ const FIREBASE_CONFIG = {
   /* Paste from Firebase console > Project settings > Your apps.
      Leave apiKey empty to keep using the committed registry. */
   FIREBASE: {
-    apiKey:            "",
-    authDomain:        "",
-    projectId:         "",
-    storageBucket:     "",
-    messagingSenderId: "",
-    appId:             ""
+    apiKey:            "AIzaSyDR7IGdS2Br7u_2iLALcS3hgRCiDFtZtGI",
+    authDomain:        "sdbs-399da.firebaseapp.com",
+    projectId:         "sdbs-399da",
+    storageBucket:     "sdbs-399da.firebasestorage.app",
+    messagingSenderId: "1096542049483",
+    appId:             "1:1096542049483:web:4e17e89454bf6840e3374e"
+    /* measurementId is for Google Analytics, which this project does not
+       load, so it is left out rather than kept as dead configuration. */
   },
 
   /* The Firebase UID of the owner - the only account allowed to change the

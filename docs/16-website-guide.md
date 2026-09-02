@@ -310,6 +310,10 @@ Full click-path is in `assets/js/firebase-config.js`. In short:
 
 1. Firebase console → new project
 2. Authentication → Sign-in method → enable **Google**
+2b. Authentication → **Settings → Authorised domains** → add
+   `snischayprasad.github.io` (localhost is there already). Miss this and
+   sign-in fails on the live site with an error that names the domain rather
+   than the setting.
 3. Firestore Database → Create, in **production** mode
 4. Project settings → Web app → copy the config into `firebase-config.js`
 5. Sign in once, then copy your UID from Authentication → Users into
