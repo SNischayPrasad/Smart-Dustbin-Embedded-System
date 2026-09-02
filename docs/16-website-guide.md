@@ -211,13 +211,16 @@ person may do.
 
 | Signed in as | Role | Can control bins |
 |---|---|---|
-| **nischayprasuna@gmail.com** (Google) | Administrator | **Yes** |
+| The six project team accounts (Google) | Administrator | **Yes** |
 | Demo credentials on the login page | Viewer | No |
 | Any other Google account | *refused* | — |
 
-Only one account has administrator access. Everyone else is either read-only
-or turned away, and `DEFAULT_ROLE_FOR_UNKNOWN: "deny"` is what makes an
-unrecognised Google account a refusal rather than a guest pass.
+Six named accounts have administrator access. Everyone else is either
+read-only or turned away, and `DEFAULT_ROLE_FOR_UNKNOWN: "deny"` is what
+makes an unrecognised Google account a refusal rather than a guest pass.
+
+The addresses themselves are not written down anywhere in this repository -
+see below.
 
 **The demo login is deliberately read-only.** Its credentials are printed on
 the page and in this README, so anyone can use them — which means they must
@@ -225,12 +228,13 @@ not command anything. A demo visitor sees the whole fleet, the map and the
 simulator, and every control is visibly disabled with an explanation. That
 keeps the public demo useful without handing out the keys.
 
-### The address is stored as a hash
+### Addresses are stored as hashes
 
-This repository is public, so committing a personal Gmail address in plain
-text hands it to every scraper that walks GitHub. The registry stores the
-SHA-256 of the lowercased address instead — sign in, hash what Google
-returns, compare:
+This repository is public, so committing personal email addresses in plain
+text hands them to every scraper that walks GitHub. That matters more for
+teammates than for yourself: publishing someone else's address is not your
+decision to make. The registry stores the SHA-256 of the lowercased address
+instead — sign in, hash what Google returns, compare:
 
 ```js
 { emailHash: "007dda63…", name: "Nischay", role: "admin" }
@@ -271,12 +275,17 @@ Roles are defined at the top of the same file, so adding a third — an
 node tests/users.test.js
 ```
 
-30 assertions: the owner resolves to `admin` and is the only one; the address
-matches case-insensitively and with stray whitespace; near-miss addresses
-(`…@googlemail.com`, `…+admin@gmail.com`, a one-letter typo) are all refused;
-the plain address does **not** appear in the file; the demo login cannot
-control, bulk-act or reset; and an unknown role falls back to viewer rather
-than failing open.
+37 assertions — and the suite itself contains **no real address**. A test
+that hard-coded the addresses in order to check their hashes would hand them
+straight back to the scrapers the hashing was meant to defeat. So the real
+registry is checked only through properties that reveal nothing (six admins,
+every entry a distinct 64-character digest, unknown addresses refused), and
+the matching logic is exercised against synthetic `@example.com` addresses
+injected into a throwaway registry.
+
+It also asserts that neither the registry nor the test file contains a
+personal-address literal — with the search string assembled at runtime, since
+a literal would match its own source.
 
 ### Turning it on with one command
 

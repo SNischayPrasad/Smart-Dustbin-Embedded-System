@@ -26,7 +26,7 @@
    realistic risk here, and nothing more.
 
    Both forms work, so use whichever you prefer:
-       { email:     "you@gmail.com",  ... }   plain text, readable
+       { email:     "you@example.com", ... }   plain text, readable
        { emailHash: "007dda63...",    ... }   hashed, not harvestable
    ========================================================================== */
 
@@ -57,21 +57,36 @@ const USER_DB = {
   /* ---- The people ------------------------------------------------------
      Add a row per person. `email` or `emailHash`, plus a name and a role.
 
-     The entry below is the owner of this project. The hash is the SHA-256
-     of the lowercased address; generate your own with:
+     These are the project team. Each hash is the SHA-256 of the lowercased
+     address. Hashing matters more for other people's addresses than for
+     your own - publishing a teammate's email in a public repository is not
+     yours to decide. Generate a hash with:
 
          node tools/hash-email.js someone@example.com
   ------------------------------------------------------------------------ */
   USERS: [
-    {
-      emailHash: "007dda63f0cb9774705083417edbff84332b237f6c480330df303865e60efc87",
-      name: "Nischay",
-      role: "admin"
-    }
+    { emailHash: "007dda63f0cb9774705083417edbff84332b237f6c480330df303865e60efc87",
+      name: "Nischay",  role: "admin" },
 
-    /* Example of a second person, in plain text:
-    ,{ email: "teammate@gmail.com", name: "Teammate", role: "viewer" }
-    */
+    { emailHash: "95408140ca8e374bd88d75b547ba8e1491e636b6c6170ff89a8f35f038230d23",
+      name: "Nandini",  role: "admin" },
+
+    { emailHash: "297f84f9c3ce00224a31fc310bf47421c5b9df6e40e1a2cac00de152f3b946c4",
+      name: "Manish",   role: "admin" },
+
+    { emailHash: "b871910b4c6d1677ff08d25bc99e5d1872dbb9cae771fb35372a1fa3bf6febb9",
+      name: "Rohit",    role: "admin" },
+
+    { emailHash: "ded14a58d808be1d6b78638705e5b48e454968343a0a9a98e9d78efd8ed20a9b",
+      name: "Kushi",    role: "admin" },
+
+    { emailHash: "391cc1f49b4c4f61c631b2f2ab76cc942d8fb3911f9ab8e0dfca60ebd9a1e22f",
+      name: "Srija",    role: "admin" }
+
+    /* To add someone else:
+         node tools/hash-email.js their@email.com
+       then paste the row it prints. Plain text works too:
+         ,{ email: "guest@example.com", name: "Guest", role: "viewer" }   */
   ],
 
   /* ---- Anyone not in the table above -----------------------------------
