@@ -28,6 +28,26 @@
   document.getElementById("whoami").textContent  = session.name + " (" + roleLabel + ")";
   document.getElementById("footUser").textContent = session.username;
 
+  /* The Users link only exists for a role that may actually use it. The
+     page guards itself as well - hiding a link is presentation, not
+     security. */
+  if (perms.canManageUsers) {
+    const link = document.getElementById("usersLink");
+    if (link) link.classList.remove("hidden");
+  }
+
+  /* If the guard on users.html bounced someone back, say why rather than
+     silently returning them to the dashboard. */
+  try {
+    const denied = sessionStorage.getItem("smartdustbin.denied");
+    if (denied) {
+      sessionStorage.removeItem("smartdustbin.denied");
+      setTimeout(function () {
+        toast("Only the Owner can open " + denied + ".");
+      }, 400);
+    }
+  } catch (e) {}
+
   if (!perms.canControlBins) {
     const banner = document.getElementById("readOnlyBanner");
     if (banner) {

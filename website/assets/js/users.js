@@ -34,13 +34,23 @@ const USER_DB = {
 
   /* ---- What each role may do ------------------------------------------ */
   ROLES: {
+    owner: {
+      label: "Owner",
+      description: "Everything an administrator can do, plus managing who else has access",
+      canControlBins: true,
+      canBulkAct:     true,
+      canPlanRoute:   true,
+      canResetDemo:   true,
+      canManageUsers: true      /* the only role that may open users.html */
+    },
     admin: {
       label: "Administrator",
       description: "Full control of every bin in the fleet",
       canControlBins: true,     /* open / close / mute / mark collected */
       canBulkAct:     true,     /* fleet-wide commands, e.g. mute all    */
       canPlanRoute:   true,     /* compute a collection route            */
-      canResetDemo:   true
+      canResetDemo:   true,
+      canManageUsers: false     /* administrators cannot grant access     */
     },
     viewer: {
       label: "Viewer",
@@ -50,7 +60,8 @@ const USER_DB = {
       /* Route planning only reads the fleet and prints a list, so a viewer
          may do it - it is the most interesting thing to show a visitor. */
       canPlanRoute:   true,
-      canResetDemo:   false
+      canResetDemo:   false,
+      canManageUsers: false
     }
   },
 
@@ -66,7 +77,7 @@ const USER_DB = {
   ------------------------------------------------------------------------ */
   USERS: [
     { emailHash: "007dda63f0cb9774705083417edbff84332b237f6c480330df303865e60efc87",
-      name: "Nischay",  role: "admin" },
+      name: "Nischay",  role: "owner" },
 
     { emailHash: "95408140ca8e374bd88d75b547ba8e1491e636b6c6170ff89a8f35f038230d23",
       name: "Nandini",  role: "admin" },
@@ -157,14 +168,23 @@ const Users = (function () {
     return r ? r.label : "Viewer";
   }
 
+  /* Owners are administrators too, so they count. */
   function adminCount() {
-    return USER_DB.USERS.filter(u => u.role === "admin").length;
+    return USER_DB.USERS.filter(u => u.role === "admin" || u.role === "owner").length;
+  }
+
+  function ownerCount() {
+    return USER_DB.USERS.filter(u => u.role === "owner").length;
+  }
+
+  function can(role, capability) {
+    return permissions(role)[capability] === true;
   }
 
   return {
     find: find, resolve: resolve, permissions: permissions,
-    roleLabel: roleLabel, adminCount: adminCount,
-    sha256Hex: sha256Hex, normalise: normalise
+    roleLabel: roleLabel, adminCount: adminCount, ownerCount: ownerCount,
+    can: can, sha256Hex: sha256Hex, normalise: normalise
   };
 })();
 

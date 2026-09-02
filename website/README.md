@@ -115,13 +115,14 @@ having the panel in two places would have guaranteed the two drifted apart.
 `website/assets/js/users.js` holds the registry: who exists, and what each
 person may do.
 
-| Signed in as | Role | Can control bins |
-|---|---|---|
-| The six project team accounts (Google) | Administrator | **Yes** |
-| Demo credentials on the login page | Viewer | No |
-| Any other Google account | *refused* | — |
+| Signed in as | Role | Can control bins | Can manage users |
+|---|---|---|---|
+| The project owner (Google) | Owner | **Yes** | **Yes** |
+| Five teammate accounts (Google) | Administrator | **Yes** | No |
+| Demo credentials on the login page | Viewer | No | No |
+| Any other Google account | *refused* | — | — |
 
-Six named accounts have administrator access. Everyone else is either
+Six named accounts have administrator access, one of them the owner. Everyone else is either
 read-only or turned away, and `DEFAULT_ROLE_FOR_UNKNOWN: "deny"` is what
 makes an unrecognised Google account a refusal rather than a guest pass.
 
@@ -133,6 +134,56 @@ the page and in this README, so anyone can use them — which means they must
 not command anything. A demo visitor sees the whole fleet, the map and the
 simulator, and every control is visibly disabled with an explanation. That
 keeps the public demo useful without handing out the keys.
+
+### Roles: owner, administrator, viewer
+
+| Role | Fleet control | Manage users |
+|---|---|---|
+| **Owner** | yes | **yes** |
+| Administrator | yes | no |
+| Viewer (the demo login) | no | no |
+
+One owner, five administrators. Administrators can command every bin in the
+city but cannot grant access to anybody &mdash; separating *can operate the
+system* from *can decide who operates it* is the whole reason a role sits
+above administrator.
+
+### The user management console
+
+`users.html` is owner-only. It is linked from the dashboard nav, but only for
+a session that may actually use it &mdash; and the page guards itself as
+well, because hiding a link is presentation, not access control. An
+administrator who types the URL is redirected back to the dashboard and told
+why.
+
+It lets the owner:
+
+- see the registry &mdash; names, roles and the first characters of each
+  address digest
+- add someone by email, hashed in the browser with WebCrypto so the plain
+  text never enters the registry
+- remove someone, except the last remaining owner
+- copy or download the exact `USERS` array to commit
+
+**The registry cannot show addresses back to you.** They are stored as
+digests, and a digest does not reverse. That is the point of the hashing, and
+it is why people are identified here by name and digest prefix.
+
+### Why there is a second step
+
+The site is static. There is no database and no API to POST to, so a change
+made in this page takes effect **in that browser only** until the generated
+`users.js` is committed and pushed.
+
+The working copy is deliberately **not** persisted to `localStorage`. Writing
+roles there would let anyone grant themselves ownership from DevTools and
+have it stick, which would turn a documented limitation into a real back
+door. Reload the page and you are back to the committed registry; the file in
+the repository stays the single source of truth.
+
+In a real deployment this form would POST to an API and the server would own
+the table. The generated-file step is exactly where that server would go, and
+saying so is a better answer in a viva than pretending the gap is not there.
 
 ### Addresses are stored as hashes
 

@@ -119,6 +119,24 @@ const REAL_USERS = USER_DB.USERS.slice();
   check("undefined role gets viewer permissions", Users.permissions(undefined).canControlBins === false);
   check("role label falls back safely",           Users.roleLabel("nonsense") === "Viewer");
 
+  console.log("\nOwner sits above administrator");
+  const owner = Users.permissions("owner");
+  check("exactly one owner",                 Users.ownerCount() === 1);
+  check("owner may manage users",            owner.canManageUsers === true);
+  check("owner keeps every admin power",
+        owner.canControlBins && owner.canBulkAct && owner.canResetDemo && owner.canPlanRoute);
+  check("ADMIN may NOT manage users",        admin.canManageUsers === false);
+  check("viewer may NOT manage users",       viewer.canManageUsers === false);
+  check("owners count as administrators",    Users.adminCount() === 6);
+  check("Users.can() agrees for owner",      Users.can("owner", "canManageUsers") === true);
+  check("Users.can() agrees for admin",      Users.can("admin", "canManageUsers") === false);
+  check("Users.can() fails closed on nonsense",
+        Users.can("wizard", "canManageUsers") === false);
+  check("the registry has exactly one owner entry",
+        REAL_USERS.filter(u => u.role === "owner").length === 1);
+  check("everyone else is an administrator",
+        REAL_USERS.filter(u => u.role === "admin").length === 5);
+
   console.log("\nStrict mode is on");
   check("unknown accounts are denied, not admitted read-only",
         USER_DB.DEFAULT_ROLE_FOR_UNKNOWN === "deny");

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>User Management - Smart Dustbin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- Route guard: owner only. Runs before anything is drawn. -->
+<script src="assets/js/auth-config.js"></script>
+<script src="assets/js/users.js"></script>
+<script src="assets/js/auth.js"></script>
+<script>
+  (function () {
+    if (!AUTH.requireAuth("login.html")) return;
+    const s = AUTH.currentSession();
+    if (!Users.can(s.role, "canManageUsers")) {
+      sessionStorage.setItem("smartdustbin.denied", "user management");
+      window.location.replace("admin.html");
+    }
+  })();
+</script>
+
+<header class="site-header">
+  <div class="container inner">
+    <a class="brand" href="admin.html">
+      <span class="logo">🗑️</span>
+      <span>Smart Dustbin<small>User Management</small></span>
+    </a>
+    <nav class="nav">
+      <a href="admin.html">&larr; Dashboard</a>
+      <a href="index.html">Public site</a>
+      <span class="who" id="whoBox"><span class="muted" id="whoami"></span></span>
+      <button class="btn btn-sm" id="logoutBtn">Sign out</button>
+    </nav>
+  </div>
+</header>
+
+<main class="container" style="padding:1.5rem 0 3rem">
+
+  <h2>Who has access</h2>
+  <p style="max-width:70ch">
+    Only the <b>Owner</b> can open this page. Administrators can command the
+    whole fleet but cannot grant access to anyone else &mdash; separating
+    &ldquo;can operate the system&rdquo; from &ldquo;can decide who operates
+    it&rdquo; is the entire point of having a role above administrator.
+  </p>
+
+  <div class="readonly-banner" style="border-left-color:var(--warn);background:rgba(255,149,0,.08)">
+    <b>This site is static &mdash; there is no database.</b>
+    Changes here take effect immediately <b>in your browser</b> so you can see
+    them work, but they reach everyone else only once you commit the generated
+    <code>users.js</code> below. That second step is not a limitation of this
+    page; it is what &ldquo;no server&rdquo; means. In a real deployment this
+    form would POST to an API and the server would own the table.
+  </div>
+
+  <div class="dash-layout" style="margin-top:1rem">
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-title">
+          <h3>Current registry</h3>
+          <span class="muted" id="regSummary"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Role</th><th>Address digest</th><th>Can manage users</th><th></th></tr>
+            </thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin:.8rem 0 0">
+          Addresses are stored as SHA-256 digests, so this page cannot show
+          them back to you &mdash; that is exactly what the hashing is for. A
+          person is identified here by their name and the first characters of
+          their digest.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><h3>Generated <code>users.js</code></h3>
+          <div class="row-tight">
+            <button class="btn btn-sm" id="copyBtn">Copy</button>
+            <button class="btn btn-sm" id="downloadBtn">Download</button>
+          </div>
+        </div>
+        <p class="muted" style="margin:0 0 .7rem">
+          Replace the <code>USERS</code> array in
+          <code>website/assets/js/users.js</code> with this, then commit and
+          push. Everyone sees the change once GitHub Pages redeploys.
+        </p>
+        <div class="console" id="generated" style="height:220px;white-space:pre"></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-title"><h3>Add someone</h3></div>
+
+        <label class="field">
+          <span>Email address</span>
+          <input type="email" id="newEmail" placeholder="person@example.com" autocomplete="off">
+        </label>
+
+        <label class="field">
+          <span>Display name</span>
+          <input type="text" id="newName" placeholder="Their name" autocomplete="off">
+        </label>
+
+        <label class="field">
+          <span>Role</span>
+          <select id="newRole">
+            <option value="admin">Administrator &mdash; full fleet control</option>
+            <option value="viewer">Viewer &mdash; read only</option>
+            <option value="owner">Owner &mdash; can also manage users</option>
+          </select>
+        </label>
+
+        <div id="addError" class="login-error" role="alert"></div>
+
+        <button class="btn btn-primary btn-block" id="addBtn">Add to registry</button>
+
+        <p class="muted" style="margin:.9rem 0 0">
+          The address is hashed in your browser with WebCrypto. The plain text
+          never leaves this page and is never written into the registry.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><h3>Hash an address</h3></div>
+        <p class="muted" style="margin:0 0 .7rem">
+          Just want the digest, without adding anyone?
+        </p>
+        <label class="field" style="margin-bottom:.6rem">
+          <input type="email" id="hashInput" placeholder="person@example.com" autocomplete="off">
+        </label>
+        <button class="btn btn-sm btn-block" id="hashBtn">Compute SHA-256</button>
+        <div class="console" id="hashOut" style="height:auto;min-height:52px;margin-top:.7rem;white-space:pre-wrap"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><h3>Session changes</h3></div>
+        <p class="muted" style="margin:0 0 .7rem" id="pendingNote">No changes yet.</p>
+        <button class="btn btn-sm btn-block" id="revertBtn">Revert to the committed registry</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container inner">
+    <div>Smart Dustbin &middot; user management &middot; owner only</div>
+    <div>Signed in as <b id="footUser">-</b></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets/js/user-admin.js"></script>
+</body>
+</html>
