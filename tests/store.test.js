@@ -171,6 +171,36 @@ FIREBASE_CONFIG.FIREBASE = { apiKey: "", projectId: "" };
   check("the owner is still present",        USER_DB.USERS.some(u => u.role === "owner"));
   check("the source says cloud unavailable", /unavailable/.test(h2.source));
 
+  console.log("\nwaitForAuth - the persisted-session race");
+
+  failReads = false;
+  /* A signed-in user whose session is restored a tick late: currentUser is
+     null at first, exactly as Firebase behaves on a real page load. */
+  let restored = null;
+  let authCb = null;
+  global.firebase.auth = Object.assign(function () {
+    return {
+      get currentUser() { return restored; },
+      onAuthStateChanged: function (cb) { authCb = cb; return function () { authCb = null; }; },
+      signInWithCredential: async () => ({ user: { uid: "owner-uid-123" } })
+    };
+  }, { GoogleAuthProvider: { credential: t => ({ token: t }) } });
+
+  const pending = UserStore.waitForAuth(3000);
+  setTimeout(function () { restored = { uid: "owner-uid-123" }; if (authCb) authCb(restored); }, 30);
+  const gotUser = await pending;
+  check("waitForAuth resolves once the session is restored",
+        gotUser && gotUser.uid === "owner-uid-123");
+
+  restored = null; authCb = null;
+  const noOne = await UserStore.waitForAuth(120);
+  check("waitForAuth resolves null when nobody signs in", noOne === null);
+
+  restored = { uid: "already-here" };
+  const immediate = await UserStore.waitForAuth(3000);
+  check("waitForAuth returns at once if already signed in",
+        immediate && immediate.uid === "already-here");
+
   console.log("\n----------------------------------------");
   console.log("  " + pass + " passed, " + fail + " failed");
   console.log("----------------------------------------\n");

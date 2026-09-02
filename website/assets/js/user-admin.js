@@ -262,6 +262,8 @@
   /* If a cloud store is configured, refresh from it so the table shows what
      everyone else sees rather than a stale copy. */
   if (CLOUD) {
+    /* hydrate() waits for the persisted Firebase session internally, so the
+       UID panel below is populated by the time this resolves. */
     UserStore.hydrate().then(function () {
       working = USER_DB.USERS.map(function (u) { return Object.assign({}, u); });
       setBackendBanner();

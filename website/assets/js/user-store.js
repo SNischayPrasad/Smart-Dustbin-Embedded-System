@@ -67,6 +67,34 @@ const UserStore = (function () {
     return firebase.auth().currentUser.uid;
   }
 
+  /* Firebase restores a persisted session ASYNCHRONOUSLY. Immediately after
+     initializeApp, currentUser is still null even for a signed-in user, so
+     anything that reads Firestore on page load must wait for the first
+     onAuthStateChanged callback or it will be refused by the rules and
+     wrongly conclude the cloud is unreachable.
+
+     Resolves with the user, or null if there is genuinely nobody signed in
+     (or the callback never arrives). */
+  function waitForAuth(timeoutMs) {
+    if (!init()) return Promise.resolve(null);
+    if (firebase.auth().currentUser) return Promise.resolve(firebase.auth().currentUser);
+
+    return new Promise(function (resolve) {
+      let settled = false;
+      const finish = function (user) {
+        if (settled) return;
+        settled = true;
+        resolve(user || null);
+      };
+      const timer = setTimeout(function () { finish(null); }, timeoutMs || 5000);
+      const unsub = firebase.auth().onAuthStateChanged(function (user) {
+        clearTimeout(timer);
+        if (typeof unsub === "function") unsub();
+        finish(user);
+      });
+    });
+  }
+
   function isOwnerUid(uid) {
     const want = String((typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.OWNER_UID) || "").trim();
     return !!want && uid === want;
@@ -116,6 +144,10 @@ const UserStore = (function () {
       USER_DB.USERS = USER_DB.COMMITTED_USERS.slice();
       return { source: "committed", entries: USER_DB.USERS };
     }
+    /* Wait for a persisted session before reading, otherwise the rules
+       refuse an anonymous request and we fall back for no good reason. */
+    await waitForAuth();
+
     const cloud = await loadCloud();
     USER_DB.USERS = merge(USER_DB.COMMITTED_USERS, cloud);
     return { source: lastError ? "committed (cloud unavailable)" : "cloud", entries: USER_DB.USERS, error: lastError };
@@ -153,6 +185,7 @@ const UserStore = (function () {
     addUser: addUser,
     removeUser: removeUser,
     signInWithGoogleIdToken: signInWithGoogleIdToken,
+    waitForAuth: waitForAuth,
     currentUid: currentUid,
     isOwnerUid: isOwnerUid,
     lastError: function () { return lastError; }
