@@ -170,6 +170,20 @@ the plain address does **not** appear in the file; the demo login cannot
 control, bulk-act or reset; and an unknown role falls back to viewer rather
 than failing open.
 
+### Turning it on with one command
+
+Once you have a Client ID from Google:
+
+```bash
+node tools/set-client-id.js 1234567890-abcdef.apps.googleusercontent.com
+```
+
+It validates the format, writes `auth-config.js`, and prints the commands to
+publish. Run it with no argument to see whether sign-in is currently on.
+
+It also refuses to write anything that looks like a client **secret**, since
+a secret committed to a public repository is public forever.
+
 ### Why this flow, on a static host
 
 The classic Authorization Code flow exchanges a code for a token using a
