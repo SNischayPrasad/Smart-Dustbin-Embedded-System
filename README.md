@@ -14,11 +14,12 @@ and a live web dashboard for managing bins across a city.
 | | |
 |---|---|
 | **Public city dashboard** | https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/ |
+| **Try the firmware** | [Live simulator](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/#simulation) — no sign-in needed |
 | **Admin console** | [/login.html](https://snischayprasad.github.io/Smart-Dustbin-Embedded-System/website/login.html) — demo sign-in `Nischay` / `Admin@123` gives a **read-only** session; fleet control requires Google sign-in as a registered administrator |
 
-Inside the admin console, scroll to **Live firmware simulation** and press
+On the public page, scroll to **Try the firmware yourself** and press
 **Uneven pile (A 90 / B 10)** — that one button demonstrates the whole point
-of the dual-sensor design.
+of the dual-sensor design, and needs no sign-in.
 
 > **Built on the ESP32**, so the bin has Wi-Fi and a REST API and the dashboard
 > can drive a real board. An Arduino UNO build is included as an alternative.
@@ -111,8 +112,10 @@ Full worked numbers in [docs/12-bin-level-calculation.md](docs/12-bin-level-calc
 - Serial command set: `OPEN CLOSE AUTO MUTE UNMUTE EMPTY STATUS HELP`
 - Optional 16x2 I2C LCD, compiled out entirely with one `#define`
 - ESP32 variant exposing a REST API for genuine remote control
-- **Public website + admin dashboard** with a live city map, remote commands,
-  a collection-route planner and an in-browser firmware simulator
+- **Public website + admin dashboard** with a live city map, remote commands
+  and a collection-route planner
+- **In-browser firmware simulator** on both pages — the real state machine
+  ported to JavaScript, driven by three sensor sliders
 - **Sign in with Google** (OAuth 2.0 / OIDC) with the ID token's RS256
   signature verified in-browser against Google's JWKS — not just decoded
 - **Role-based access** from a user registry — one named administrator; the

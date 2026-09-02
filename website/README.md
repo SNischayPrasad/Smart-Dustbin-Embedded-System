@@ -96,6 +96,20 @@ https://snischayprasad.github.io
 http://localhost:3000
 ```
 
+### The simulator runs on the public page too
+
+The firmware twin is on both `index.html` and `admin.html`. The wiring lives
+in one place - `assets/js/simulator.js` - and each page just calls:
+
+```js
+initSimulator("[data-simulator]", { deviceId: "BIN-DEMO" });
+```
+
+Controls are found by `data-sim` attributes scoped to that root, and every one
+of them is optional, so a page can include a cut-down panel without the module
+complaining. This replaced 178 lines that had been sitting inside `admin.js`;
+having the panel in two places would have guaranteed the two drifted apart.
+
 ### Who may sign in — the user registry
 
 `website/assets/js/users.js` holds the registry: who exists, and what each

@@ -174,7 +174,7 @@
   </div>
 
   <!-- ======================================================== SIMULATION -->
-  <section id="simulation" class="stack" style="margin-bottom:1rem">
+  <section id="simulation" class="stack" data-simulator style="margin-bottom:1rem">
     <div class="card">
       <div class="card-title">
         <h3>🔬 Live firmware simulation</h3>
@@ -191,13 +191,13 @@
       </p>
 
       <div class="twin">
-        <div id="dustbinView"></div>
+        <div data-sim="view"></div>
 
         <div class="stack">
           <div>
             <label class="field" style="margin-bottom:.6rem">
-              <span>Sensor 1 - distance to hand: <b id="handVal">80.0 cm</b></span>
-              <input type="range" id="handSlider" min="2" max="80" step="0.5" value="80">
+              <span>Sensor 1 - distance to hand: <b data-sim="handVal">80.0 cm</b></span>
+              <input type="range" data-sim="handSlider" min="2" max="80" step="0.5" value="80">
             </label>
             <div class="row-tight" style="margin-bottom:1rem">
               <button class="btn btn-sm" data-hand="10">👋 Wave a hand (10 cm)</button>
@@ -205,15 +205,15 @@
             </div>
 
             <label class="field" style="margin-bottom:.6rem">
-              <span>Sensor A (inside, front-left): <b id="wasteValA">30.0 cm</b>
-                    &rarr; <b id="fillValA">0%</b></span>
-              <input type="range" id="wasteSliderA" min="0" max="30" step="0.5" value="30">
+              <span>Sensor A (inside, front-left): <b data-sim="wasteValA">30.0 cm</b>
+                    &rarr; <b data-sim="fillValA">0%</b></span>
+              <input type="range" data-sim="wasteSliderA" min="0" max="30" step="0.5" value="30">
             </label>
 
             <label class="field" style="margin-bottom:.6rem">
-              <span>Sensor B (inside, rear-right): <b id="wasteValB">30.0 cm</b>
-                    &rarr; <b id="fillValB">0%</b></span>
-              <input type="range" id="wasteSliderB" min="0" max="30" step="0.5" value="30">
+              <span>Sensor B (inside, rear-right): <b data-sim="wasteValB">30.0 cm</b>
+                    &rarr; <b data-sim="fillValB">0%</b></span>
+              <input type="range" data-sim="wasteSliderB" min="0" max="30" step="0.5" value="30">
             </label>
 
             <div class="row-tight" style="margin-bottom:.5rem">
@@ -232,28 +232,28 @@
           </div>
 
           <div class="readout">
-            <div><div class="k">Lid state</div><div class="v" id="twinLid">CLOSED</div></div>
-            <div><div class="k">Bin status</div><div class="v" id="twinStatus">OK</div></div>
-            <div><div class="k">Fused fill</div><div class="v" id="twinFill">0%</div></div>
-            <div><div class="k">A / B spread</div><div class="v" id="twinSpread">0%</div></div>
-            <div><div class="k">Sensors live</div><div class="v" id="twinSensors">2 / 2</div></div>
-            <div><div class="k">Green LED</div><div class="v" id="twinGreen">ON</div></div>
-            <div><div class="k">Red LED</div><div class="v" id="twinRed">OFF</div></div>
-            <div><div class="k">Buzzer</div><div class="v" id="twinBuzzer">SILENT</div></div>
-            <div><div class="k">Lid opens</div><div class="v" id="twinOpens">0</div></div>
+            <div><div class="k">Lid state</div><div class="v" data-sim="lid">CLOSED</div></div>
+            <div><div class="k">Bin status</div><div class="v" data-sim="status">OK</div></div>
+            <div><div class="k">Fused fill</div><div class="v" data-sim="fill">0%</div></div>
+            <div><div class="k">A / B spread</div><div class="v" data-sim="spread">0%</div></div>
+            <div><div class="k">Sensors live</div><div class="v" data-sim="sensors">2 / 2</div></div>
+            <div><div class="k">Green LED</div><div class="v" data-sim="green">ON</div></div>
+            <div><div class="k">Red LED</div><div class="v" data-sim="red">OFF</div></div>
+            <div><div class="k">Buzzer</div><div class="v" data-sim="buzzer">SILENT</div></div>
+            <div><div class="k">Lid opens</div><div class="v" data-sim="opens">0</div></div>
           </div>
         </div>
       </div>
 
       <div class="card-title" style="margin:1.25rem 0 .5rem">
         <h3 style="font-size:.95rem">Serial Monitor (9600 baud)</h3>
-        <button class="btn btn-sm" id="clearConsole">Clear</button>
+        <button class="btn btn-sm" data-sim="clear">Clear</button>
       </div>
-      <div class="console" id="serialConsole"></div>
+      <div class="console" data-sim="console"></div>
       <div class="row" style="margin-top:.6rem">
-        <input type="text" id="cmdInput" class="grow-input"
+        <input type="text" data-sim="cmdInput" class="grow-input"
                placeholder="Command: OPEN, CLOSE, AUTO, MUTE, UNMUTE, EMPTY, STATUS, HELP">
-        <button class="btn btn-primary" id="cmdSend">Send</button>
+        <button class="btn btn-primary" data-sim="cmdSend">Send</button>
       </div>
     </div>
 
@@ -323,6 +323,7 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/map.js"></script>
 <script src="assets/js/sim.js"></script>
+<script src="assets/js/simulator.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>
 </html>

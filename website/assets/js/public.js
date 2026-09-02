@@ -66,6 +66,10 @@
       "updated " + clockTime(Date.now());
   }
 
+  /* The firmware twin - the same panel the admin console runs, from the
+     same module, so the two cannot drift apart. */
+  initSimulator("[data-simulator]", { deviceId: "BIN-DEMO" });
+
   /* First paint, then a live tick every 5 seconds. */
   refresh();
   map.fitAll();

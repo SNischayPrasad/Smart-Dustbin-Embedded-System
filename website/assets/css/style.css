@@ -742,7 +742,7 @@ code {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: .7rem; }
 
   .twin { gap: 1.25rem; }
-  #dustbinView { max-width: 200px; margin-inline: auto; }
+  [data-sim=view] { max-width: 200px; margin-inline: auto; }
   .readout { grid-template-columns: repeat(2, 1fr); }
   .console { height: 200px; font-size: 12px; padding: .8rem .9rem; }
   iframe.wokwi-frame { height: 320px; }
