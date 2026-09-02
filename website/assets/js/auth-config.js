@@ -31,7 +31,7 @@ const AUTH_CONFIG = {
 
   /* Paste your Client ID here. Leave it empty and the site simply keeps
      using the demo sign-in - nothing breaks. */
-  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_ID: "820505905053-2iup2kuvaiamqv7579ru1st48ta2bku0.apps.googleusercontent.com",
 
   /* WHO MAY SIGN IN is not configured here - it lives in users.js, which
      holds the user registry with names, roles and permissions.           */
