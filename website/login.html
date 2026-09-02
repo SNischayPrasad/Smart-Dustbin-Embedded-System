@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
   <title>Admin Login - Smart Dustbin</title>
   <meta name="description" content="Administrator sign in for the Smart Dustbin city management console.">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
@@ -19,19 +20,26 @@
       Smart Dustbin &middot; City Waste Management
     </p>
 
+    <div class="demo-banner" role="note">
+      <b>Demo sign-in &mdash; not a real account system.</b>
+      A college embedded-systems project: no accounts, no server, no database.
+      The check runs in your browser against the fixed credentials below.
+      <b>Never enter a real password here.</b>
+    </div>
+
     <div id="loginError" class="login-error" role="alert"></div>
 
     <form id="loginForm" autocomplete="off" novalidate>
       <label class="field">
         <span>Username</span>
         <input type="text" id="username" name="username" placeholder="Enter username"
-               autocomplete="username" required autofocus>
+               autocomplete="off" required autofocus>
       </label>
 
       <label class="field">
         <span>Password</span>
         <input type="password" id="password" name="password" placeholder="Enter password"
-               autocomplete="current-password" required>
+               autocomplete="off" required>
       </label>
 
       <label style="display:flex;align-items:center;gap:.5rem;font-size:.87rem;
@@ -46,7 +54,8 @@
     </form>
 
     <div class="hint">
-      <b>Demo credentials</b><br>
+      <b>Demo credentials</b> &mdash; published deliberately, because they
+      protect nothing.<br>
       Username: <code>Nischay</code><br>
       Password: <code>Admin@123</code>
     </div>

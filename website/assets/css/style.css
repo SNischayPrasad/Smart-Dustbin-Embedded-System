@@ -428,6 +428,21 @@ input[type=range]::-moz-range-thumb     { width: 22px; height: 22px; }
   font-size: 28px; background: var(--bg-soft);
 }
 @media (prefers-color-scheme: dark) { .login-card .logo-big { background: var(--panel-2); } }
+/* Stated before the fields, not after them: this is a demo sign-in, and a
+   login form on a personal *.github.io subdomain is exactly the shape of a
+   phishing page. Being loud about what it is costs nothing. */
+.demo-banner {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  background: rgba(255,149,0,.10);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.demo-banner b { color: var(--text); font-weight: 600; }
+
 .login-error {
   display: none; margin-bottom: 1rem; padding: .7rem .95rem;
   background: rgba(255,59,48,.09);

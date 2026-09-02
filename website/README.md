@@ -133,7 +133,8 @@ runs from a `file://` URL. **Reset demo data** restores the seed fleet.
 
 ## Security notice
 
-**The login here is a client-side demo.** The credentials are in JavaScript
+**The login here is a client-side demo**, and the page says so above the
+fields. The credentials are in JavaScript
 the browser downloads, so anyone can read them in DevTools. That is acceptable
 for a college project and is **not** acceptable for anything real. The top of
 `assets/js/auth.js` explains this and lists what a production version would do.

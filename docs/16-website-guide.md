@@ -151,7 +151,8 @@ backend with server-side sessions and authenticated REST endpoints.
 
 ## A note on the login
 
-**The login on `login.html` is a client-side demo.** The credentials are in
+**The login on `login.html` is a client-side demo**, and the page says so
+above the fields. The credentials are in
 JavaScript the browser downloads, so anyone can read them in DevTools. That is
 fine for a college project and is **not** fine for anything real. The top of
 `assets/js/auth.js` says so explicitly and lists what a production version
