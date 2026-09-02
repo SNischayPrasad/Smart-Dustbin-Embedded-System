@@ -5,7 +5,7 @@ and a live web dashboard for managing bins across a city.
 
 ![Platform](https://img.shields.io/badge/platform-ESP32%20%7C%20Arduino%20UNO-E7352C)
 ![Language](https://img.shields.io/badge/language-Embedded%20C%2FC%2B%2B-blue)
-![Tests](https://img.shields.io/badge/tests-136%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-171%20passing-brightgreen)
 ![Build](https://img.shields.io/badge/ESP32%20build-75%25%20flash%20%7C%2014%25%20RAM-success)
 ![Simulation](https://img.shields.io/badge/hardware-not%20required-orange)
 
@@ -122,7 +122,10 @@ Full worked numbers in [docs/12-bin-level-calculation.md](docs/12-bin-level-calc
   where every address is stored as a hash; the public demo login is read-only
 - **Owner-only user management console** that hashes new addresses in-browser
   and generates the registry file to commit
-- **136 automated tests**, including 24 that try to get forged JWTs accepted
+- **Optional Firestore store** so the admin list is shared and instant — with
+  Security Rules enforcing owner-only writes **server-side**, which is the one
+  place in this project where authorisation is not merely a UI convention
+- **171 automated tests**, including 24 that try to get forged JWTs accepted
 
 ---
 
@@ -260,6 +263,10 @@ node tests/oauth.test.js
 node tests/users.test.js
 ```
 
+```bash
+node tests/store.test.js
+```
+
 ---
 
 ## Sample output
@@ -309,6 +316,7 @@ Every sketch was compiled with `arduino-cli` against the real toolchains.
 | `node tests/twin.test.js` | 64 passed, 0 failed |
 | `node tests/oauth.test.js` | 24 passed, 0 failed (forgery attempts all rejected) |
 | `node tests/users.test.js` | 48 passed, 0 failed (access control, no real addresses) |
+| `node tests/store.test.js` | 35 passed, 0 failed (cloud store, outage and refusal cases) |
 | Wokwi ESP32 circuit import | 11 parts, 27 connections, all 16 board pins resolve |
 
 ---

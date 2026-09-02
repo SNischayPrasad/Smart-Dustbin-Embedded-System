@@ -279,6 +279,65 @@ In a real deployment this form would POST to an API and the server would own
 the table. The generated-file step is exactly where that server would go, and
 saying so is a better answer in a viva than pretending the gap is not there.
 
+### Making changes stick: the Firestore store
+
+Out of the box the admin list is the one committed in `users.js`, and the
+management console generates a file for you to commit. Fill in
+`assets/js/firebase-config.js` and the list moves to Firestore instead:
+changes are instant, shared by everyone, and survive without touching the
+repository.
+
+**This is also the point where the project stops hand-waving about security.**
+Every other check in the site runs in the browser, so it decides what the
+interface offers rather than what a determined person can do. Firestore
+Security Rules run on Google's servers. With `firestore.rules` published, an
+attacker editing `localStorage`, forging a session or calling the REST API by
+hand still cannot add an administrator, because the write is refused before
+it reaches the database:
+
+```
+allow create, update: if isOwner() && validEntry(request.resource.data);
+allow delete:         if isOwner();
+```
+
+`isOwner()` compares `request.auth.uid` against a single hard-coded UID. A
+UID is used rather than an email because this file is public and a UID
+reveals nothing about who the person is.
+
+#### Setup
+
+Full click-path is in `assets/js/firebase-config.js`. In short:
+
+1. Firebase console → new project
+2. Authentication → Sign-in method → enable **Google**
+3. Firestore Database → Create, in **production** mode
+4. Project settings → Web app → copy the config into `firebase-config.js`
+5. Sign in once, then copy your UID from Authentication → Users into
+   `OWNER_UID` — the management console displays it for you
+6. Firestore → Rules → paste `firestore.rules`, replacing `OWNER_UID_HERE`
+
+Step 6 is the one that matters. Without it the database is open.
+
+#### The committed registry is always the floor
+
+`users.js` is loaded first and cloud entries are merged on top. That is
+deliberate: if Firebase is unreachable, misconfigured or the free tier runs
+out, the owner can still sign in from the file in the repository. A remote
+dependency should never be able to lock you out of your own project. The
+console says which backend it is on, and warns when it has fallen back.
+
+#### Tested
+
+```bash
+node tests/store.test.js
+```
+
+35 assertions against a stubbed Firestore: the merge (cloud overriding a
+committed role, case-insensitive hash matching, cloud-only additions), that
+only digests are ever written, that a write refused by Security Rules raises
+rather than silently succeeding, and that an outage mid-session leaves the
+owner able to sign in from the committed registry.
+
 ### Addresses are stored as hashes
 
 This repository is public, so committing personal email addresses in plain

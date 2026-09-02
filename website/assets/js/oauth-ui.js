@@ -23,6 +23,12 @@
   }
   function setNote(html) { if (note) note.innerHTML = html; }
 
+  /* Cloud problems are worth surfacing but must never block a sign-in that
+     the committed registry already permits. */
+  function serialWarn(msg) {
+    if (window.console) console.warn("[smart-dustbin] " + msg);
+  }
+
   /* ---- 1. not configured: hide the whole block ------------------------ */
   if (!GoogleAuth.isConfigured()) {
     box.classList.add("hidden");
@@ -35,6 +41,26 @@
     try {
       const payload = await GoogleAuth.verifyIdToken(
         response.credential, AUTH_CONFIG.GOOGLE_CLIENT_ID);
+
+      /* If a cloud store is configured, exchange the same verified token
+         for a Firebase session and pull the live admin list. The committed
+         registry is still the floor, so an unreachable Firebase cannot lock
+         the owner out. */
+      let firebaseUid = null;
+      if (typeof UserStore !== "undefined" && UserStore.configured()) {
+        setNote("Signing in to the cloud store&hellip;");
+        try {
+          const fbUser = await UserStore.signInWithGoogleIdToken(response.credential);
+          firebaseUid = fbUser ? fbUser.uid : null;
+        } catch (e) {
+          serialWarn("Firebase sign-in failed: " + e.message);
+        }
+        try {
+          await UserStore.hydrate();
+        } catch (e) {
+          serialWarn("Could not load the cloud admin list: " + e.message);
+        }
+      }
 
       /* Authentication succeeded - Google confirmed who this is.
          Authorisation is a separate question, answered by the registry. */
@@ -55,7 +81,8 @@
         email:    payload.email,
         picture:  payload.picture || null,
         role:     decision.role,
-        method:   "google"
+        method:   "google",
+        uid:      firebaseUid
       });
 
       window.location.href = "admin.html";

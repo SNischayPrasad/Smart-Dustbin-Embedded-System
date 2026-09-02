@@ -114,6 +114,7 @@ const AUTH = (function () {
       picture:  identity.picture || null,
       role:     identity.role || "viewer",
       method:   identity.method || "demo",
+      uid:      identity.uid || null,
       issued:   Date.now(),
       expires:  Date.now() + minutes * 60000
     };

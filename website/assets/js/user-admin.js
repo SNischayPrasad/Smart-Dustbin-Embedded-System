@@ -48,6 +48,41 @@
     toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
   }
 
+  /* ---- which backend are we on? --------------------------------------- */
+  const CLOUD = (typeof UserStore !== "undefined") && UserStore.configured();
+
+  function setBackendBanner() {
+    const el = document.getElementById("backendNote");
+    if (!el) return;
+    if (CLOUD) {
+      const err = UserStore.lastError && UserStore.lastError();
+      el.innerHTML = err
+        ? "<b>Cloud store unreachable.</b> Showing the registry committed in " +
+          "<code>users.js</code>. Changes here cannot be saved until the " +
+          "connection returns. (" + escapeHtml(err) + ")"
+        : "<b>Cloud store connected.</b> Adding or removing someone takes " +
+          "effect immediately for everyone. Firestore Security Rules decide " +
+          "whether the write is allowed &mdash; not this page.";
+      el.style.borderLeftColor = err ? "var(--full)" : "var(--ok)";
+      el.style.background = err ? "rgba(255,59,48,.07)" : "rgba(52,199,89,.08)";
+    } else {
+      el.innerHTML = "<b>No cloud store configured.</b> This site is static, " +
+        "so changes apply in your browser only until you commit the generated " +
+        "<code>users.js</code> below. Fill in " +
+        "<code>assets/js/firebase-config.js</code> to make them instant and shared.";
+    }
+  }
+
+  /* Show the owner their Firebase UID - they need it for firestore.rules. */
+  function showUid() {
+    const el = document.getElementById("uidNote");
+    if (!el) return;
+    const uid = (typeof UserStore !== "undefined") ? UserStore.currentUid() : null;
+    el.textContent = uid
+      ? "Your Firebase UID: " + uid
+      : "Not signed in to Firebase - UID unavailable.";
+  }
+
   /* ---- working copy ---------------------------------------------------- */
   const COMMITTED = USER_DB.USERS.map(function (u) { return Object.assign({}, u); });
   let working     = USER_DB.USERS.map(function (u) { return Object.assign({}, u); });
@@ -93,10 +128,24 @@
         const i = parseInt(b.getAttribute("data-remove"), 10);
         const who = working[i];
         if (!confirm("Remove " + who.name + " from the registry?")) return;
+
+        if (CLOUD && who.source === "cloud") {
+          UserStore.removeUser(who.emailHash).then(function () {
+            working.splice(i, 1);
+            apply();
+            toast(who.name + " removed for everyone");
+          }).catch(function (e) {
+            toast("Refused: " + e.message);
+          });
+          return;
+        }
+
         working.splice(i, 1);
         dirty = true;
         apply();
-        toast(who.name + " removed - commit users.js to make it stick");
+        toast(who.source === "committed" && CLOUD
+          ? who.name + " is in users.js - remove them there and commit"
+          : who.name + " removed - commit users.js to make it stick");
       });
     });
 
@@ -144,10 +193,28 @@
     });
     if (clash) return showError("That address is already in the registry.");
 
-    working.push({ emailHash: hash, name: name, role: role });
+    const entry = { emailHash: hash, name: name, role: role };
+
+    if (CLOUD) {
+      try {
+        await UserStore.addUser(entry);
+        entry.source = "cloud";
+        working.push(entry);
+        apply();
+        document.getElementById("newEmail").value = "";
+        document.getElementById("newName").value  = "";
+        toast(name + " added as " + Users.roleLabel(role) + " - live for everyone");
+      } catch (e) {
+        /* A refusal here is Security Rules doing their job. */
+        showError("The database refused the write: " + e.message +
+                  " (only the owner UID in firestore.rules may add people)");
+      }
+      return;
+    }
+
+    working.push(entry);
     dirty = true;
     apply();
-
     document.getElementById("newEmail").value = "";
     document.getElementById("newName").value  = "";
     toast(name + " added as " + Users.roleLabel(role) + " - now commit users.js");
@@ -188,5 +255,18 @@
     toast("Reverted to the committed registry");
   });
 
+  setBackendBanner();
+  showUid();
   render();
+
+  /* If a cloud store is configured, refresh from it so the table shows what
+     everyone else sees rather than a stale copy. */
+  if (CLOUD) {
+    UserStore.hydrate().then(function () {
+      working = USER_DB.USERS.map(function (u) { return Object.assign({}, u); });
+      setBackendBanner();
+      showUid();
+      render();
+    });
+  }
 })();

@@ -11,6 +11,11 @@
 <body>
 
 <!-- Route guard: owner only. Runs before anything is drawn. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/user-store.js"></script>
 <script src="assets/js/auth-config.js"></script>
 <script src="assets/js/users.js"></script>
 <script src="assets/js/auth.js"></script>
@@ -50,14 +55,8 @@
     it&rdquo; is the entire point of having a role above administrator.
   </p>
 
-  <div class="readonly-banner" style="border-left-color:var(--warn);background:rgba(255,149,0,.08)">
-    <b>This site is static &mdash; there is no database.</b>
-    Changes here take effect immediately <b>in your browser</b> so you can see
-    them work, but they reach everyone else only once you commit the generated
-    <code>users.js</code> below. That second step is not a limitation of this
-    page; it is what &ldquo;no server&rdquo; means. In a real deployment this
-    form would POST to an API and the server would own the table.
-  </div>
+  <div class="readonly-banner" id="backendNote"
+       style="border-left-color:var(--warn);background:rgba(255,149,0,.08)"></div>
 
   <div class="dash-layout" style="margin-top:1rem">
 
@@ -142,6 +141,20 @@
         </label>
         <button class="btn btn-sm btn-block" id="hashBtn">Compute SHA-256</button>
         <div class="console" id="hashOut" style="height:auto;min-height:52px;margin-top:.7rem;white-space:pre-wrap"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><h3>Firebase setup</h3></div>
+        <p class="muted" style="margin:0 0 .6rem">
+          You need this UID for <code>firestore.rules</code> &mdash; it is what
+          the server checks before allowing any change to the admin list.
+        </p>
+        <div class="console" id="uidNote"
+             style="height:auto;min-height:40px;white-space:pre-wrap;font-size:12px"></div>
+        <p class="muted" style="margin:.7rem 0 0">
+          Full instructions are in
+          <code>assets/js/firebase-config.js</code>.
+        </p>
       </div>
 
       <div class="card">

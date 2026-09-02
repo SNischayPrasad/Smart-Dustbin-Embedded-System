@@ -1,0 +1,72 @@
+rules_version = '2';
+
+/* ==========================================================================
+   Smart Dustbin - Firestore Security Rules
+   --------------------------------------------------------------------------
+   THIS FILE IS THE ACTUAL ACCESS CONTROL.
+
+   Every other check in this project runs in the browser, which means it
+   decides what the interface offers rather than what a determined person can
+   do. These rules run on Google's servers. Once they are published, someone
+   editing localStorage, forging a session or calling the REST API by hand
+   still cannot add an administrator, because the write is refused before it
+   reaches the database.
+
+   TO INSTALL
+     Firebase console > Firestore Database > Rules
+     Replace OWNER_UID_HERE below with the owner's Firebase UID
+     (Authentication > Users > User UID), then press Publish.
+
+   A UID is used rather than an email address for two reasons: this file is
+   committed to a public repository, and a UID reveals nothing about who the
+   person is.
+   ========================================================================== */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* The admin registry. */
+    match /admins/{docId} {
+
+      /* Anyone signed in with a verified Google account may READ the list.
+         The list holds hashed addresses, names and roles - nothing secret -
+         and the app needs to read it to decide what to show. */
+      allow read: if request.auth != null
+                  && request.auth.token.email_verified == true;
+
+      /* Only the owner may WRITE. This is what turns the project's access
+         control from a UI convention into something a server enforces.
+
+         Note that delete is separated out: on a delete there is no
+         request.resource.data to validate, so folding it in with create and
+         update would make every deletion fail. */
+      allow create, update: if isOwner() && validEntry(request.resource.data);
+      allow delete:         if isOwner();
+    }
+
+    /* Everything else is closed. A rule that is not written is a rule that
+       denies, and relying on that default is safer than trying to enumerate
+       what should be blocked. */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+
+  function isOwner() {
+    return request.auth != null
+        && request.auth.uid == 'OWNER_UID_HERE'
+        && request.auth.token.email_verified == true;
+  }
+
+  /* Shape checking, so a compromised owner session cannot write arbitrary
+     documents into the collection. */
+  function validEntry(d) {
+    return d.keys().hasOnly(['emailHash', 'name', 'role', 'addedAt', 'addedBy'])
+        && d.emailHash is string
+        && d.emailHash.size() == 64
+        && d.name is string
+        && d.name.size() > 0
+        && d.name.size() <= 60
+        && d.role in ['owner', 'admin', 'viewer'];
+  }
+}
