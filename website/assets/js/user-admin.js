@@ -74,13 +74,68 @@
   }
 
   /* Show the owner their Firebase UID - they need it for firestore.rules. */
-  function showUid() {
-    const el = document.getElementById("uidNote");
+  function showUid(message) {
+    const el   = document.getElementById("uidNote");
+    const copy = document.getElementById("copyUidBtn");
     if (!el) return;
-    const uid = (typeof UserStore !== "undefined") ? UserStore.currentUid() : null;
-    el.textContent = uid
-      ? "Your Firebase UID: " + uid
-      : "Not signed in to Firebase - UID unavailable.";
+
+    if (message) { el.textContent = message; return; }
+
+    if (typeof UserStore === "undefined" || !UserStore.configured()) {
+      el.textContent = "Firebase is not configured yet - fill in firebase-config.js.";
+      return;
+    }
+
+    const uid = UserStore.currentUid();
+    if (uid) {
+      el.textContent = uid;
+      if (copy) copy.classList.remove("hidden");
+    } else {
+      el.textContent = "No Firebase session yet. Press “Connect to Firebase” below.";
+      if (copy) copy.classList.add("hidden");
+    }
+  }
+
+  /* Direct Firebase popup, so a UID can be obtained before the rules or the
+     OWNER_UID are in place. Errors are shown on screen rather than hidden in
+     the console, because every one of them is a setup step the reader still
+     has to do. */
+  const connectBtn = document.getElementById("fbConnectBtn");
+  if (connectBtn) {
+    if (typeof UserStore === "undefined" || !UserStore.configured()) {
+      connectBtn.disabled = true;
+      connectBtn.title = "Fill in firebase-config.js first";
+    }
+    connectBtn.addEventListener("click", async function () {
+      connectBtn.disabled = true;
+      const original = connectBtn.textContent;
+      connectBtn.textContent = "Opening Google…";
+      showUid("Waiting for the Google window…");
+      try {
+        const user = await UserStore.signInWithPopup();
+        showUid();
+        toast("Connected to Firebase as " + (user.email || user.uid));
+        await UserStore.hydrate();
+        working = USER_DB.USERS.map(function (u) { return Object.assign({}, u); });
+        setBackendBanner();
+        render();
+      } catch (e) {
+        showUid("Could not connect.\n\n" + UserStore.explain(e));
+      } finally {
+        connectBtn.disabled = false;
+        connectBtn.textContent = original;
+      }
+    });
+  }
+
+  const copyUidBtn = document.getElementById("copyUidBtn");
+  if (copyUidBtn) {
+    copyUidBtn.addEventListener("click", async function () {
+      const uid = UserStore.currentUid();
+      if (!uid) return;
+      try { await navigator.clipboard.writeText(uid); toast("UID copied"); }
+      catch (e) { toast("Clipboard blocked - select the text and copy"); }
+    });
   }
 
   /* ---- working copy ---------------------------------------------------- */

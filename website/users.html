@@ -150,9 +150,16 @@
           the server checks before allowing any change to the admin list.
         </p>
         <div class="console" id="uidNote"
-             style="height:auto;min-height:40px;white-space:pre-wrap;font-size:12px"></div>
+             style="height:auto;min-height:40px;white-space:pre-wrap;font-size:12px;word-break:break-all"></div>
+
+        <div class="row-tight" style="margin-top:.7rem">
+          <button class="btn btn-sm btn-primary" id="fbConnectBtn">Connect to Firebase</button>
+          <button class="btn btn-sm hidden" id="copyUidBtn">Copy UID</button>
+        </div>
+
         <p class="muted" style="margin:.7rem 0 0">
-          Full instructions are in
+          Signing in here talks to Firebase directly, so you can obtain a UID
+          before anything else is configured. Full instructions are in
           <code>assets/js/firebase-config.js</code>.
         </p>
       </div>

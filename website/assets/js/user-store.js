@@ -62,6 +62,48 @@ const UserStore = (function () {
     return result.user;
   }
 
+  /* A direct Google popup, independent of the page's own sign-in flow.
+     This exists to break a chicken-and-egg during setup: the Security Rules
+     need the owner's UID, but the UID only exists after a first Firebase
+     sign-in. This button produces one without anything else being
+     configured. */
+  async function signInWithPopup() {
+    if (!init()) throw new Error("Firebase is not configured");
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const result = await firebase.auth().signInWithPopup(provider);
+    return result.user;
+  }
+
+  /* Firebase error codes are precise but the messages are not always
+     actionable, so translate the ones that actually come up during setup. */
+  function explain(err) {
+    const code = (err && err.code) || "";
+    switch (code) {
+      case "auth/unauthorized-domain":
+        return "This domain is not on the Firebase authorised list. " +
+               "Firebase console > Authentication > Settings > Authorised " +
+               "domains, and add: " + location.hostname;
+      case "auth/operation-not-allowed":
+        return "Google sign-in is not enabled on the Firebase project. " +
+               "Authentication > Sign-in method > enable Google.";
+      case "auth/popup-blocked":
+        return "The browser blocked the popup. Allow popups for this site " +
+               "and try again.";
+      case "auth/popup-closed-by-user":
+        return "The sign-in window was closed before it finished.";
+      case "auth/configuration-not-found":
+        return "Authentication is not set up on this Firebase project yet. " +
+               "Authentication > Get started.";
+      case "permission-denied":
+      case "auth/permission-denied":
+        return "The database refused this. Publish firestore.rules with your " +
+               "owner UID.";
+      default:
+        return (err && err.message) || String(err);
+    }
+  }
+
   function currentUid() {
     if (!ready || !firebase.auth().currentUser) return null;
     return firebase.auth().currentUser.uid;
@@ -185,6 +227,8 @@ const UserStore = (function () {
     addUser: addUser,
     removeUser: removeUser,
     signInWithGoogleIdToken: signInWithGoogleIdToken,
+    signInWithPopup: signInWithPopup,
+    explain: explain,
     waitForAuth: waitForAuth,
     currentUid: currentUid,
     isOwnerUid: isOwnerUid,

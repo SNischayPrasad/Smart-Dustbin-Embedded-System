@@ -53,7 +53,11 @@
           const fbUser = await UserStore.signInWithGoogleIdToken(response.credential);
           firebaseUid = fbUser ? fbUser.uid : null;
         } catch (e) {
-          serialWarn("Firebase sign-in failed: " + e.message);
+          /* Surfaced, not swallowed: every failure here is a setup step the
+             reader still has to do, and hiding it in the console meant the
+             UID panel just said "not signed in" with no reason given. */
+          setNote("Signed in with Google, but the cloud store refused: " +
+                  UserStore.explain(e));
         }
         try {
           await UserStore.hydrate();
