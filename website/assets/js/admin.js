@@ -139,6 +139,14 @@
     map.select(binId);
     renderSelected();
     renderTable();
+
+    /* On phones the per-row Collect button is hidden and the control panel
+       sits above the table, so a tap on a row would otherwise appear to do
+       nothing. Bring the panel to the user instead. */
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      const panel = document.getElementById("controlPanel");
+      if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function renderSelected() {

@@ -405,8 +405,15 @@ input:focus, select:focus, textarea:focus {
 }
 input[type=range] {
   width: 100%; accent-color: var(--brand);
-  height: 4px; margin: .6rem 0;
+  height: 4px; margin: .8rem 0;
 }
+/* A fat invisible thumb: easy to grab with a finger, unchanged visually. */
+input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
+input[type=range]::-moz-range-thumb     { width: 22px; height: 22px; }
+
+.filter-select { width: auto; padding: .4rem .7rem; font-size: 14px; }
+.filter-input  { width: 230px; padding: .4rem .7rem; font-size: 14px; }
+.grow-input    { flex: 1; min-width: 220px; }
 
 /* ---------------------------------------------------------------- login */
 .login-page {
@@ -572,3 +579,159 @@ code {
 @media (prefers-color-scheme: dark) { code { background: var(--panel-2); } }
 
 ::selection { background: rgba(0,113,227,.22); }
+
+/* ==========================================================================
+   MOBILE
+   --------------------------------------------------------------------------
+   Everything above is the desktop design. This block adapts it for phones and
+   small tablets. Three problems are being solved, in order of severity:
+
+     1. The nav had more links than fit in a 48 px bar, so it wrapped and
+        spilled over the hero. It now scrolls horizontally instead.
+     2. Tap targets were 27-30 px tall. Apple's own guidance is 44 pt, so
+        every control gets a minimum height on touch screens.
+     3. The data tables forced a 640 px min-width and scrolled sideways
+        inside their card. On a phone the low-value columns are hidden
+        instead, so the table fits and stays readable.
+   ========================================================================== */
+
+/* ---- tablet and below ------------------------------------------------- */
+@media (max-width: 820px) {
+  .container, .site-footer .inner { width: 92vw; }
+  .section { padding: 3rem 0; }
+  .hero    { padding: 3rem 0 1.5rem; }
+  .card    { padding: 1.35rem 1.4rem; }
+  .map-wrap { height: 360px; }
+  iframe.wokwi-frame { height: 380px; }
+}
+
+/* ---- phones ------------------------------------------------------------ */
+@media (max-width: 640px) {
+
+  /* --- typography: tighten the big display sizes ---------------------- */
+  h1 { font-size: clamp(32px, 8.6vw, 44px); line-height: 1.08; }
+  h2 { font-size: clamp(24px, 6.4vw, 32px); }
+  h3 { font-size: 19px; }
+  body { font-size: 16px; }
+
+  .hero { padding: 2.25rem 0 1.25rem; text-align: left; }
+  .hero .eyebrow { font-size: 17px; }
+  .hero p { font-size: 17px; margin-inline: 0; text-align: left; }
+  .hero .cta { justify-content: stretch; flex-direction: column; gap: .75rem; }
+  .hero .cta .btn { width: 100%; }
+
+  .section { padding: 2.5rem 0; }
+  .card { padding: 1.15rem 1.15rem; border-radius: 14px; }
+  .card-title { margin-bottom: .85rem; }
+
+  /* --- header: scroll the nav instead of wrapping it ------------------ */
+  .site-header .inner { gap: .5rem; }
+  .brand { flex: 0 0 auto; }
+  .brand small { display: none; }          /* the sub-label costs width */
+
+  .nav {
+    flex-wrap: nowrap;                     /* THE fix - no more spilling */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 88%, transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav > * { flex: 0 0 auto; }
+  .nav a:not(.btn) { padding: .5rem .55rem; font-size: 13px; }
+  .nav .muted { display: none; }           /* "Nischay (Administrator)" */
+
+  /* --- touch targets: 44 px minimum ----------------------------------- */
+  .btn        { min-height: 44px; padding: .7rem 1.25rem; }
+  .btn-sm     { min-height: 40px; padding: .55rem 1rem; font-size: 14px; }
+  .nav .btn   { min-height: 32px; padding: .35rem .85rem; }  /* fits the bar */
+  .btn-block  { min-height: 48px; }
+
+  /* --- tables: drop the low-value columns rather than scroll ---------- */
+  .table-wrap { overflow-x: visible; }
+  table { min-width: 0; font-size: 14px; }
+  thead th, tbody td { padding: .7rem .5rem; }
+
+  /* Scoped by section, and applied to BOTH thead and tbody - hiding only the
+     body cells leaves a wider header row, which drags the table back out to
+     its full width and reintroduces the sideways scroll. */
+
+  /* public table: Bin | Location | Zone | Type | Fill | Status | Last seen
+     keep 1, 2, 5, 6                                                      */
+  #live table tr > *:nth-child(3),
+  #live table tr > *:nth-child(4),
+  #live table tr > *:nth-child(7) { display: none; }
+
+  /* admin table: Bin | Location | Zone | Type | Fill | Lid | Battery |
+                  Status | Last seen | Control        keep 1, 2, 5, 8     */
+  #fleet table tr > *:nth-child(3),
+  #fleet table tr > *:nth-child(4),
+  #fleet table tr > *:nth-child(6),
+  #fleet table tr > *:nth-child(7),
+  #fleet table tr > *:nth-child(9),
+  #fleet table tr > *:nth-child(10) { display: none; }
+
+  /* Location is the only free-text column; truncate it rather than let it
+     push the table wide. */
+  #live table tr > *:nth-child(2),
+  #fleet table tr > *:nth-child(2) {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- dashboard layout ----------------------------------------------- */
+  .map-wrap { height: 300px; }
+  .kpi { padding: 1rem 1.1rem; }
+  .kpi .value { font-size: 32px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+
+  .twin { gap: 1.25rem; }
+  #dustbinView { max-width: 200px; margin-inline: auto; }
+  .readout { grid-template-columns: repeat(2, 1fr); }
+  .console { height: 200px; font-size: 12px; padding: .8rem .9rem; }
+  iframe.wokwi-frame { height: 320px; }
+
+  /* A 4 px-tall range input is a 4 px-tall finger target. Padding grows the
+     hit box without changing how the track looks. */
+  input[type=range] { height: auto; padding: 11px 0; margin: .3rem 0; }
+
+  .filter-input, .filter-select { width: 100%; }
+  .card-title .row-tight { width: 100%; }
+  .grow-input { min-width: 0; width: 100%; }
+
+  /* --- login ----------------------------------------------------------- */
+  .login-page { padding: 1.5rem 1rem; }
+  .login-card { padding: 1.9rem 1.4rem; }
+
+  /* --- misc ------------------------------------------------------------ */
+  .flow { justify-content: flex-start; }
+  .flow .step { font-size: 13px; padding: .45rem .85rem; }
+  .toast { bottom: 16px; width: calc(100vw - 32px); max-width: none; text-align: center; }
+  .site-footer .inner { flex-direction: column; gap: .4rem; }
+}
+
+/* ---- very small phones (iPhone SE 1st gen and similar) ----------------- */
+@media (max-width: 360px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .readout  { grid-template-columns: 1fr 1fr; }
+  h1 { font-size: 30px; }
+  .card { padding: 1rem; }
+}
+
+/* ---- landscape phones: the map should not eat the whole screen --------- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .map-wrap { height: 260px; }
+  .console  { height: 160px; }
+  .hero     { padding: 1.5rem 0 1rem; }
+}
+
+/* ---- real touch devices, any width ------------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+  tbody tr:hover { background: transparent; }   /* no sticky hover state */
+  .btn:hover     { background: var(--panel); }
+  .btn-primary:hover { background: var(--brand); }
+}

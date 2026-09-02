@@ -167,6 +167,40 @@ in a viva than having quietly used it and hoped nobody asked.
 
 ---
 
+## Mobile
+
+The site is responsive down to 320 px. Three things change on a phone, and
+each solves a problem that was measured rather than guessed at:
+
+**1. The nav scrolls instead of wrapping.** With five links plus a sign-in
+button, the row wrapped and spilled out of the fixed 48 px header, overlapping
+the page beneath it. On phones the nav becomes a horizontally scrollable strip
+with a fade on the right edge, and the header keeps its height.
+
+**2. Every control is at least 40 px tall.** Buttons were 27-30 px and the
+range sliders had a 4 px hit area, which is unusable with a finger. Buttons
+now have a `min-height`, and the sliders get vertical padding that grows the
+touch target without changing how the track looks.
+
+**3. Tables drop columns rather than scrolling sideways.** The fleet table has
+ten columns and forced a 640 px minimum width. On a phone it shows Bin,
+Location, Fill and Status; the rest are hidden with `display: none` on both
+the header and the body cells - hiding only the body leaves a wider header row
+that drags the table back out. Because the per-row Collect button is hidden,
+tapping a row scrolls the control panel into view instead.
+
+Other adjustments: the map drops from 480 px to 300 px, KPI cards go to two
+columns (one below 360 px), the hero left-aligns with full-width buttons, the
+dustbin illustration is capped at 200 px, and hover styles are suppressed on
+touch devices so states do not stick after a tap.
+
+Breakpoints: **820 px** (tablet), **640 px** (phone), **360 px** (small
+phone), plus a landscape rule that shortens the map when the viewport is under
+520 px tall. Every mobile rule lives inside a `max-width` query, so the
+desktop layout is untouched.
+
+---
+
 ## Theme
 
 The visual language follows apple.com: a near-white canvas with `#f5f5f7`

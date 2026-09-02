@@ -50,7 +50,7 @@
       <div class="card-title">
         <h3>🗺️ City map <span class="muted" style="font-weight:400">- click a bin to control it</span></h3>
         <div class="row-tight">
-          <select id="zoneFilter" style="width:auto;padding:.35rem .6rem;font-size:.85rem">
+          <select id="zoneFilter" class="filter-select">
             <option value="">All zones</option>
           </select>
           <button class="btn btn-sm" id="fitBtn">Fit all</button>
@@ -141,9 +141,9 @@
     <div class="card-title">
       <h3>📋 Fleet inventory</h3>
       <div class="row-tight">
-        <input type="text" id="search" placeholder="Search bin, location or zone"
-               style="width:230px;padding:.35rem .6rem;font-size:.85rem">
-        <select id="statusFilter" style="width:auto;padding:.35rem .6rem;font-size:.85rem">
+        <input type="text" id="search" class="filter-input"
+               placeholder="Search bin, location or zone">
+        <select id="statusFilter" class="filter-select">
           <option value="">All statuses</option>
           <option value="ok">Normal</option>
           <option value="warning">Near full</option>
@@ -244,8 +244,8 @@
       </div>
       <div class="console" id="serialConsole"></div>
       <div class="row" style="margin-top:.6rem">
-        <input type="text" id="cmdInput" placeholder="Type a command: OPEN, CLOSE, AUTO, MUTE, UNMUTE, EMPTY, STATUS, HELP"
-               style="flex:1;min-width:220px">
+        <input type="text" id="cmdInput" class="grow-input"
+               placeholder="Command: OPEN, CLOSE, AUTO, MUTE, UNMUTE, EMPTY, STATUS, HELP">
         <button class="btn btn-primary" id="cmdSend">Send</button>
       </div>
     </div>
@@ -262,8 +262,8 @@
         Paste your Wokwi project ID once and it is remembered in this browser.
       </p>
       <div class="row" style="margin-bottom:.9rem">
-        <input type="text" id="wokwiId" placeholder="Wokwi project ID, for example 123456789012345678"
-               style="flex:1;min-width:220px">
+        <input type="text" id="wokwiId" class="grow-input"
+               placeholder="Wokwi project ID, e.g. 123456789012345678">
         <button class="btn btn-primary" id="wokwiLoad">Load</button>
         <a class="btn" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" rel="noopener">
           Create on Wokwi
@@ -294,7 +294,7 @@
       <code>/api/status</code> from the board itself instead of the demo data.
     </p>
     <div class="row" style="margin-bottom:.8rem">
-      <input type="text" id="deviceIp" placeholder="192.168.1.42" style="flex:1;min-width:180px">
+      <input type="text" id="deviceIp" class="grow-input" placeholder="192.168.1.42">
       <button class="btn btn-primary" id="deviceConnect">Connect</button>
       <button class="btn" id="deviceStop">Stop</button>
     </div>
