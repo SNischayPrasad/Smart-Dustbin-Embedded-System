@@ -20,6 +20,14 @@
 
    server/server.js in this repository contains a small Express version that
    demonstrates step 1, 3 and 4 for anyone who wants to go further.
+
+   GOOGLE SIGN-IN
+   --------------------------------------------------------------------------
+   oauth.js adds real OAuth 2.0 / OpenID Connect on top of this file. That
+   flow is genuine authentication - the ID token's RS256 signature is checked
+   against Google's published keys before any session is created. Sessions
+   from either route share the shape below, so the rest of the app does not
+   care which was used; `session.method` records it.
    ========================================================================== */
 
 const AUTH = (function () {
@@ -75,15 +83,34 @@ const AUTH = (function () {
 
     saveLock({ fails: 0, until: 0 });
 
-    const session = {
+    return { ok: true, session: startSession({
       username: user.username,
       name:     user.name,
       role:     user.role,
+      method:   "demo"
+    }) };
+  }
+
+  /* ---- Create a session from any authenticated identity ---------------
+     Used by the demo login above and by oauth.js after it has verified a
+     Google ID token. Keeping session creation in one place means the
+     expiry rules cannot drift between the two routes.                   */
+  function startSession(identity) {
+    const minutes = (typeof AUTH_CONFIG !== "undefined" && AUTH_CONFIG.SESSION_MINUTES)
+                    ? AUTH_CONFIG.SESSION_MINUTES : SESSION_MINS;
+
+    const session = {
+      username: identity.username,
+      name:     identity.name || identity.username,
+      email:    identity.email || null,
+      picture:  identity.picture || null,
+      role:     identity.role || "Administrator",
+      method:   identity.method || "demo",
       issued:   Date.now(),
-      expires:  Date.now() + SESSION_MINS * 60000
+      expires:  Date.now() + minutes * 60000
     };
     try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
-    return { ok: true, session: session };
+    return session;
   }
 
   /* ---- Session ------------------------------------------------------- */
@@ -115,6 +142,7 @@ const AUTH = (function () {
 
   return {
     login: login,
+    startSession: startSession,
     logout: logout,
     isLoggedIn: isLoggedIn,
     currentSession: currentSession,

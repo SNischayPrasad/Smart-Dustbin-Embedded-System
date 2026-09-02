@@ -74,6 +74,106 @@ website/
 
 ---
 
+## Sign in with Google (OAuth 2.0 / OpenID Connect)
+
+The site supports real Google sign-in alongside the demo login. It is **off
+until you add a Client ID**, and nothing breaks while it is off.
+
+### Turning it on
+
+Edit one line in `website/assets/js/auth-config.js`:
+
+```js
+GOOGLE_CLIENT_ID: "1234567890-abcdef.apps.googleusercontent.com",
+```
+
+To get that ID: Google Cloud Console → new project → **OAuth consent screen**
+(External, Testing is fine) → **Credentials → OAuth client ID → Web
+application** → add these authorised JavaScript origins:
+
+```
+https://snischayprasad.github.io
+http://localhost:3000
+```
+
+Optionally restrict who may sign in:
+
+```js
+ALLOWED_EMAILS: ["you@gmail.com"],
+```
+
+Leave it empty and any verified Google account is admitted — which is
+authentication without authorisation, and the page says so on screen.
+
+### Why this flow, on a static host
+
+The classic Authorization Code flow exchanges a code for a token using a
+**client secret**. A secret cannot live in front-end code, so that flow needs
+a server — and GitHub Pages has none.
+
+Google Identity Services solves this for **public clients**: Google
+authenticates the user itself and hands the page a signed **ID token**. No
+secret is involved, because possession of the token is not what proves
+anything — the **signature** is.
+
+> The Client ID is **not** a secret. It is a public identifier meant to ship
+> in front-end code. The *client secret* on the same Google page is never used
+> by this project and must never be committed.
+
+### The part most tutorials skip
+
+Many examples decode the JWT with `atob()` and trust the payload. **That is
+not authentication.** A JWT is three base64url strings; anyone can craft one
+claiming to be anybody. The payload only means something once the signature
+has been verified.
+
+`website/assets/js/oauth.js` does the real thing:
+
+1. Fetch Google's **JWKS** (its published public signing keys)
+2. Select the key whose `kid` matches the token header
+3. Verify the **RS256 signature** with WebCrypto
+4. Validate `iss`, `aud`, `exp`, `nbf` and `email_verified`
+
+It also refuses any token whose header is not `RS256` — an `alg: "none"`
+token is the textbook JWT forgery and is rejected before any other work.
+
+### It is tested against forgeries
+
+```bash
+node tests/oauth.test.js
+```
+
+27 assertions. A local RSA key pair stands in for Google's, and most cases are
+attempts to get a **bad** token accepted: signed with the wrong key, payload
+swapped after signing, `alg: none` and `HS256` downgrades, unknown key id,
+wrong `aud`, wrong issuer, expired, `nbf` in the future, unverified email.
+Every one is rejected with a specific reason.
+
+### Honest limits — say this in a viva
+
+Verifying in the browser proves the token really is Google's. It does **not**
+make this dashboard secure, because there is no server and no protected API:
+the fleet lives in `localStorage`, so anyone can edit it from DevTools no
+matter who signed in.
+
+Real authorisation requires the **server** to verify the token on every
+request — which is what `server/server.js` demonstrates. What this adds is
+genuine authentication in front of a client-side app, and being able to
+explain that distinction is worth more than the feature itself.
+
+### Graceful degradation
+
+| Situation | Behaviour |
+|---|---|
+| No Client ID configured | Google block hidden; demo sign-in only |
+| Configured but Google unreachable | "Could not reach Google. Use the demo sign-in below." |
+| Configured and online | Real Google button; demo login still available below it |
+
+That last row matters for a viva on a bad network — the project never depends
+on Google being reachable.
+
+---
+
 ## Mobile
 
 The site is responsive down to 320 px. Three things change on a phone, and

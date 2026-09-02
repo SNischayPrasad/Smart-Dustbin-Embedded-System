@@ -443,6 +443,29 @@ input[type=range]::-moz-range-thumb     { width: 22px; height: 22px; }
 }
 .demo-banner b { color: var(--text); font-weight: 600; }
 
+/* ---- Google sign-in block ---------------------------------------------- */
+.google-box { margin-bottom: 1.25rem; }
+#googleButton { display: flex; justify-content: center; min-height: 44px; }
+.google-note {
+  margin: .6rem 0 0; font-size: 12px; text-align: center;
+  color: var(--text-faint); line-height: 1.5;
+}
+.or-divider {
+  display: flex; align-items: center; gap: .75rem;
+  margin: 1.25rem 0 .25rem;
+  color: var(--text-faint); font-size: 12px;
+}
+.or-divider::before, .or-divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ---- signed-in identity in the dashboard header ------------------------ */
+.who { display: inline-flex; align-items: center; gap: .4rem; margin: 0 .5rem; }
+.who-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  object-fit: cover; border: 1px solid var(--border);
+}
+
 .login-error {
   display: none; margin-bottom: 1rem; padding: .7rem .95rem;
   background: rgba(255,59,48,.09);
@@ -656,7 +679,7 @@ code {
   .nav::-webkit-scrollbar { display: none; }
   .nav > * { flex: 0 0 auto; }
   .nav a:not(.btn) { padding: .5rem .55rem; font-size: 13px; }
-  .nav .muted { display: none; }           /* "Nischay (Administrator)" */
+  .nav .who { display: none; }             /* name + avatar: no room */
 
   /* --- touch targets: 44 px minimum ----------------------------------- */
   .btn        { min-height: 44px; padding: .7rem 1.25rem; }

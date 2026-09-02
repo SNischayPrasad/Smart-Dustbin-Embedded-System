@@ -29,6 +29,12 @@
 
     <div id="loginError" class="login-error" role="alert"></div>
 
+    <div id="googleBox" class="google-box">
+      <div id="googleButton"></div>
+      <p id="googleNote" class="google-note">Loading Google sign-in&hellip;</p>
+      <div class="or-divider"><span>or use the demo account</span></div>
+    </div>
+
     <form id="loginForm" autocomplete="off" novalidate>
       <label class="field">
         <span>Username</span>
@@ -66,7 +72,10 @@
   </div>
 </main>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="assets/js/auth-config.js"></script>
 <script src="assets/js/auth.js"></script>
+<script src="assets/js/oauth.js"></script>
 <script>
   /* Already signed in? Skip the form. */
   if (AUTH.isLoggedIn()) window.location.replace("admin.html");
@@ -113,5 +122,6 @@
     }, 350);
   });
 </script>
+<script src="assets/js/oauth-ui.js"></script>
 </body>
 </html>

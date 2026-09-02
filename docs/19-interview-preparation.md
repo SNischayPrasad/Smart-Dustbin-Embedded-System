@@ -251,11 +251,15 @@ This is the question your project is designed to invite. Have the numbers.
 > switch or current sensing would let the firmware detect a jammed lid instead
 > of assuming the command worked.
 >
-> **Real security on the dashboard.** The login is deliberately client-side
-> for the demo, and I documented that honestly in auth.js. A real deployment
-> needs server-side sessions with an HttpOnly cookie, argon2 password hashing,
-> HTTPS and per-device certificates. I wrote a small Node server in server/
-> that demonstrates the session half of that.
+> **Real authorisation on the dashboard.** The site now does genuine Google
+> sign-in - it verifies the ID token's RS256 signature against Google's
+> published keys before creating a session, rather than decoding the JWT and
+> trusting it as most examples do. But that is *authentication*. Because
+> GitHub Pages has no server and no protected API, the fleet still lives in
+> localStorage and is editable from DevTools regardless of who signed in.
+> Real authorisation means the server verifies the token on every request,
+> which is the shape server/server.js demonstrates. Being able to draw that
+> line is the part I would want to be asked about.
 >
 > If I were starting again I would also add temperature compensation from the
 > beginning. The speed of sound changes about 0.6 m/s per degree, roughly 5 %
@@ -282,6 +286,9 @@ This is the question your project is designed to invite. Have the numbers.
 | How much memory does it use? | ESP32: 983 KB flash (75 %), 46 KB RAM (14 %). UNO: 16,640 B flash (51 %), 836 B RAM (40 %) |
 | What is crosstalk here? | Two ultrasonic sensors firing together hear each other; fixed with a 12 ms gap between pings |
 | Why median and not average? | One outlier moves an average but cannot move a median, and the median adds no lag |
+| Why does verifying a JWT need the signature, not just decoding it? | A JWT is three base64url strings. Anyone can craft one claiming to be anybody. Only the RS256 signature, checked against Google's public keys, proves it came from Google |
+| What is `alg: "none"`? | A forged JWT header claiming no signature. If a verifier honours it, any token is accepted. Mine rejects anything that is not RS256 before doing any other work |
+| Is your Google Client ID a secret? | No, it is a public identifier and is meant to ship in front-end code. That is why this flow works without a server. The *client secret* is separate and is never used here |
 | Why is the level not measured while the lid is open? | The sensors would be looking at the ceiling or at the arm of the user |
 | What is a cooperative scheduler? | Tasks return quickly and are dispatched by timestamp comparison, with no preemption and no RTOS |
 

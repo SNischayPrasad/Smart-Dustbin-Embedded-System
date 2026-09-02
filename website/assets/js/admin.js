@@ -21,7 +21,19 @@
   document.getElementById("whoami").textContent  = session.name + " (" + session.role + ")";
   document.getElementById("footUser").textContent = session.username;
 
+  /* A Google session carries a real profile picture; the demo one does not. */
+  if (session.picture) {
+    const av = document.getElementById("whoAvatar");
+    av.src = session.picture;
+    av.alt = session.name;
+    av.classList.remove("hidden");
+  }
+
   document.getElementById("logoutBtn").addEventListener("click", function () {
+    /* Stop Google silently re-signing the user in on the next visit. */
+    if (session.method === "google" && window.google && google.accounts && google.accounts.id) {
+      try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+    }
     AUTH.logout();
     window.location.href = "login.html";
   });

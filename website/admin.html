@@ -11,6 +11,7 @@
 <body>
 
 <!-- Route guard: runs before anything is drawn. -->
+<script src="assets/js/auth-config.js"></script>
 <script src="assets/js/auth.js"></script>
 <script>AUTH.requireAuth("login.html");</script>
 
@@ -25,7 +26,10 @@
       <a href="#simulation">Simulation</a>
       <a href="#device">Live device</a>
       <a href="index.html">Public site</a>
-      <span class="muted" style="margin:0 .5rem" id="whoami"></span>
+      <span class="who" id="whoBox">
+        <img id="whoAvatar" class="who-avatar hidden" alt="">
+        <span class="muted" id="whoami"></span>
+      </span>
       <button class="btn btn-sm" id="logoutBtn">Sign out</button>
     </nav>
   </div>

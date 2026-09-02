@@ -5,7 +5,7 @@ and a live web dashboard for managing bins across a city.
 
 ![Platform](https://img.shields.io/badge/platform-ESP32%20%7C%20Arduino%20UNO-E7352C)
 ![Language](https://img.shields.io/badge/language-Embedded%20C%2FC%2B%2B-blue)
-![Tests](https://img.shields.io/badge/tests-64%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-91%20passing-brightgreen)
 ![Build](https://img.shields.io/badge/ESP32%20build-75%25%20flash%20%7C%2014%25%20RAM-success)
 ![Simulation](https://img.shields.io/badge/hardware-not%20required-orange)
 
@@ -113,7 +113,9 @@ Full worked numbers in [docs/12-bin-level-calculation.md](docs/12-bin-level-calc
 - ESP32 variant exposing a REST API for genuine remote control
 - **Public website + admin dashboard** with a live city map, remote commands,
   a collection-route planner and an in-browser firmware simulator
-- **64 automated tests** covering the maths, the state machine and the fusion
+- **Sign in with Google** (OAuth 2.0 / OIDC) with the ID token's RS256
+  signature verified in-browser against Google's JWKS — not just decoded
+- **91 automated tests**, including 27 that try to get forged JWTs accepted
 
 ---
 
@@ -243,6 +245,10 @@ Admin login: **`Nischay`** / **`Admin@123`**
 node tests/twin.test.js
 ```
 
+```bash
+node tests/oauth.test.js
+```
+
 ---
 
 ## Sample output
@@ -290,6 +296,7 @@ Every sketch was compiled with `arduino-cli` against the real toolchains.
 | `src/` modular build (UNO) | 13,414 B flash (41 %) |
 | Compiler warnings (`--warnings all`) | none from project code |
 | `node tests/twin.test.js` | 64 passed, 0 failed |
+| `node tests/oauth.test.js` | 27 passed, 0 failed (forgery attempts all rejected) |
 | Wokwi ESP32 circuit import | 11 parts, 27 connections, all 16 board pins resolve |
 
 ---
@@ -352,8 +359,11 @@ engineering.
   between A and B is still invisible.
 - **No temperature compensation.** The speed of sound shifts about 0.6 m/s per
   degree C - negligible indoors, a real error on a bin standing in the sun.
-- **The website login is client-side.** Deliberate, and documented in
-  `website/assets/js/auth.js`. `server/server.js` shows the correct approach.
+- **Authentication is real, authorisation is not.** Google sign-in genuinely
+  verifies an ID token's signature, but with no server and no protected API
+  the dashboard state still lives in `localStorage` and is editable from
+  DevTools. Real authorisation needs the server to verify the token on every
+  request — `server/server.js` shows that shape.
 - **Wi-Fi is the wrong radio for street furniture.** A real deployment would
   use LoRaWAN or NB-IoT with deep sleep.
 

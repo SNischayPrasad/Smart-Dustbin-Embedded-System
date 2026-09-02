@@ -43,7 +43,10 @@ Smart-Dustbin-Embedded-System/
 │   └── assets/
 │       ├── css/style.css
 │       ├── js/data.js            Fleet data layer
-│       ├── js/auth.js            Login and session handling
+│       ├── js/auth-config.js     Google Client ID + allowlist (edit this)
+│       ├── js/auth.js            Session handling and the demo login
+│       ├── js/oauth.js           Google ID token verification (WebCrypto)
+│       ├── js/oauth-ui.js        Google Sign-In button wiring
 │       ├── js/map.js             Leaflet map with an offline fallback
 │       ├── js/sim.js             Firmware twin + animated dustbin
 │       ├── js/public.js          Public page behaviour
@@ -54,7 +57,8 @@ Smart-Dustbin-Embedded-System/
 │   └── server.js                 Static hosting + session auth + REST API
 │
 ├── tests/
-│   └── twin.test.js              38 automated checks of the firmware logic
+│   ├── twin.test.js              64 automated checks of the firmware logic
+│   └── oauth.test.js             27 checks that forged JWTs are rejected
 │
 ├── data/                    Datasets and recorded results
 │   ├── bins.json                 Seed fleet of 16 bins
@@ -115,7 +119,7 @@ authenticated REST endpoints. It exists to show the contrast with the
 deliberately simple client-side login.
 
 ### `tests/`
-`node tests/twin.test.js` runs 38 assertions against the same logic the
+`node tests/twin.test.js` runs 64 assertions against the same logic the
 firmware implements - the fill formula, the threshold bands, every transition
 of the lid state machine, and the command set. Automated tests in an embedded
 student project are unusual and worth pointing at.
