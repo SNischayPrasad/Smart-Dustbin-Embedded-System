@@ -482,6 +482,21 @@ explain that distinction is worth more than the feature itself.
 That last row matters for a viva on a bad network — the project never depends
 on Google being reachable.
 
+### Cache-busting after a push
+
+GitHub Pages serves assets with a cache lifetime, so after a push a browser
+will happily keep running yesterday's JavaScript - which looks exactly like
+the fix not working. Before committing front-end changes, run:
+
+```bash
+node tools/bump-assets.js
+```
+
+It stamps `?v=<commit count>` onto every same-origin CSS and JS reference in
+the HTML pages, so the URL changes whenever the code does and the browser is
+obliged to refetch. CDN URLs are left alone - they are already versioned in
+the path and are meant to be cached hard.
+
 ---
 
 ## Mobile
