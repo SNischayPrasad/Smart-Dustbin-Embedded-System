@@ -235,6 +235,20 @@ Full click-path is in `assets/js/firebase-config.js`. In short:
 
 Step 6 is the one that matters. Without it the database is open.
 
+#### Keeping the two owner lists in step
+
+An owner is defined in two places and both must agree: `OWNER_UIDS` in
+`firebase-config.js` decides what the page offers, and `ownerUids()` in
+`firestore.rules` decides what the database permits. Nothing enforces the
+match automatically, so:
+
+```bash
+node tools/check-owners.js
+```
+
+If they drift, the new owner gets the management screen and is then refused
+on every write - which reads as a bug rather than a missing edit.
+
 #### The committed registry is always the floor
 
 `users.js` is loaded first and cloud entries are merged on top. That is

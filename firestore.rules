@@ -63,8 +63,8 @@ service cloud.firestore {
      until their first Firebase sign-in, so this cannot be done in advance. */
   function ownerUids() {
     return [
-      'LQQbMKRso0bpYoGlEgI9dJ48R3x2'   // Nischay
-      // , 'REPLACE_WITH_NANDINI_UID'  // Nandini - awaiting first sign-in
+      'LQQbMKRso0bpYoGlEgI9dJ48R3x2',  // Nischay
+      'D8ptwdFYwvWcZKB8Ib9TjoEY90i1'   // Nandini
     ];
   }
 

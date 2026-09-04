@@ -80,9 +80,8 @@ const FIREBASE_CONFIG = {
      an owner: have them open users.html, press "Connect to Firebase", copy
      the UID it shows, then add it to BOTH this array and firestore.rules. */
   OWNER_UIDS: [
-    "LQQbMKRso0bpYoGlEgI9dJ48R3x2"    /* Nischay */
-    /* , "..."                            Nandini - awaiting her first
-                                          Firebase sign-in */
+    "LQQbMKRso0bpYoGlEgI9dJ48R3x2",   /* Nischay */
+    "D8ptwdFYwvWcZKB8Ib9TjoEY90i1"    /* Nandini */
   ],
 
   /* Kept so older code and docs referring to a single owner still work. */
