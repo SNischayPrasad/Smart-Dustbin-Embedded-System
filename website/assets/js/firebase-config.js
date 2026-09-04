@@ -72,8 +72,20 @@ const FIREBASE_CONFIG = {
        load, so it is left out rather than kept as dead configuration. */
   },
 
-  /* The Firebase UID of the owner - the only account allowed to change the
-     admin list. Must match the UID in firestore.rules. */
+  /* Firebase UIDs allowed to change the admin list. Must match the list in
+     firestore.rules - the rules are what actually enforce this; the entry
+     here only decides what the page offers.
+
+     A person gets a UID the first time they sign in to Firebase, so to add
+     an owner: have them open users.html, press "Connect to Firebase", copy
+     the UID it shows, then add it to BOTH this array and firestore.rules. */
+  OWNER_UIDS: [
+    "LQQbMKRso0bpYoGlEgI9dJ48R3x2"    /* Nischay */
+    /* , "..."                            Nandini - awaiting her first
+                                          Firebase sign-in */
+  ],
+
+  /* Kept so older code and docs referring to a single owner still work. */
   OWNER_UID: "LQQbMKRso0bpYoGlEgI9dJ48R3x2",
 
   /* Firestore collection holding the admin list. */

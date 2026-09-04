@@ -14,10 +14,8 @@ rules_version = '2';
 
    TO INSTALL
      Firebase console > Firestore Database > Rules
-     The owner UID below is already filled in. If the project ever changes
-     hands, update it in BOTH this file and
-     website/assets/js/firebase-config.js
-     (Firebase console > Authentication > Users > User UID), then Publish.
+     The owner UIDs are already filled in. To add or change one, update
+     BOTH this file and website/assets/js/firebase-config.js, then Publish.
 
    A UID is used rather than an email address for two reasons: this file is
    committed to a public repository, and a UID reveals nothing about who the
@@ -54,9 +52,25 @@ service cloud.firestore {
     }
   }
 
+  /* Owners, by Firebase UID.
+
+     A UID is used rather than an email because this file is public, and
+     because it survives someone changing their address.
+
+     TO ADD AN OWNER: have them open users.html, press "Connect to Firebase"
+     and copy the UID it shows. Add it to this list AND to OWNER_UIDS in
+     website/assets/js/firebase-config.js, then Publish. A person has no UID
+     until their first Firebase sign-in, so this cannot be done in advance. */
+  function ownerUids() {
+    return [
+      'LQQbMKRso0bpYoGlEgI9dJ48R3x2'   // Nischay
+      // , 'REPLACE_WITH_NANDINI_UID'  // Nandini - awaiting first sign-in
+    ];
+  }
+
   function isOwner() {
     return request.auth != null
-        && request.auth.uid == 'LQQbMKRso0bpYoGlEgI9dJ48R3x2'
+        && request.auth.uid in ownerUids()
         && request.auth.token.email_verified == true;
   }
 

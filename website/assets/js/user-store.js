@@ -145,8 +145,9 @@ const UserStore = (function () {
     if (!configured()) {
       return "Firebase is not configured - fill in firebase-config.js.";
     }
-    const uid  = currentUid();
-    const want = String((typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.OWNER_UID) || "").trim();
+    const uid   = currentUid();
+    const owners = ownerUids();
+    const want  = owners.join(", ");
 
     if (!uid) {
       return "You are not signed in to Firebase, so the rules see no user at " +
@@ -154,23 +155,38 @@ const UserStore = (function () {
              "(Signing in to this site with Google is not the same thing - " +
              "Firebase needs its own session.)";
     }
-    if (!want) {
-      return "OWNER_UID is empty in firebase-config.js, so the page cannot " +
-             "tell whether you are the owner.";
+    if (owners.length === 0) {
+      return "No owner UIDs are configured in firebase-config.js, so the page " +
+             "cannot tell whether you are an owner.";
     }
-    if (uid !== want) {
-      return "You are signed in to Firebase as " + uid + ", but the owner is " +
-             want + ". Sign in with the owner's Google account.";
+    if (!isOwnerUid(uid)) {
+      return "You are signed in to Firebase as " + uid + ", which is not in " +
+             "the owner list (" + want + "). Either sign in with an owner " +
+             "account, or add this UID to OWNER_UIDS in firebase-config.js " +
+             "AND to firestore.rules - the rules are what actually decide.";
     }
-    return "You are signed in as the owner (" + uid + "), so the rules " +
+    return "You are signed in as an owner (" + uid + "), so the rules " +
            "themselves are refusing this. That almost always means " +
            "firestore.rules has not been published yet: Firebase console > " +
            "Firestore Database > Rules > paste the file > Publish.";
   }
 
+  /* The configured owner UIDs, from the list if present and the single
+     value otherwise, so an older config still works. */
+  function ownerUids() {
+    if (typeof FIREBASE_CONFIG === "undefined") return [];
+    const list = FIREBASE_CONFIG.OWNER_UIDS;
+    if (Array.isArray(list)) {
+      return list.map(function (u) { return String(u || "").trim(); })
+                 .filter(function (u) { return u.length > 0; });
+    }
+    const one = String(FIREBASE_CONFIG.OWNER_UID || "").trim();
+    return one ? [one] : [];
+  }
+
   function isOwnerUid(uid) {
-    const want = String((typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.OWNER_UID) || "").trim();
-    return !!want && uid === want;
+    if (!uid) return false;
+    return ownerUids().indexOf(String(uid).trim()) !== -1;
   }
 
   /* ---- read ------------------------------------------------------------ */
@@ -264,6 +280,7 @@ const UserStore = (function () {
     waitForAuth: waitForAuth,
     currentUid: currentUid,
     isOwnerUid: isOwnerUid,
+    ownerUids: ownerUids,
     lastError: function () { return lastError; }
   };
 })();

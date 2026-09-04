@@ -117,12 +117,12 @@ person may do.
 
 | Signed in as | Role | Can control bins | Can manage users |
 |---|---|---|---|
-| The project owner (Google) | Owner | **Yes** | **Yes** |
-| Five teammate accounts (Google) | Administrator | **Yes** | No |
+| Two project owners (Google) | Owner | **Yes** | **Yes** |
+| Four teammate accounts (Google) | Administrator | **Yes** | No |
 | Demo credentials on the login page | Viewer | No | No |
 | Any other Google account | *refused* | — | — |
 
-Six named accounts have administrator access, one of them the owner. Everyone else is either
+Six named accounts have administrator access, two of them owners. Everyone else is either
 read-only or turned away, and `DEFAULT_ROLE_FOR_UNKNOWN: "deny"` is what
 makes an unrecognised Google account a refusal rather than a guest pass.
 
@@ -143,7 +143,7 @@ keeps the public demo useful without handing out the keys.
 | Administrator | yes | no |
 | Viewer (the demo login) | no | no |
 
-One owner, five administrators. Administrators can command every bin in the
+Two owners, four administrators. Administrators can command every bin in the
 city but cannot grant access to anybody &mdash; separating *can operate the
 system* from *can decide who operates it* is the whole reason a role sits
 above administrator.
@@ -206,9 +206,16 @@ allow create, update: if isOwner() && validEntry(request.resource.data);
 allow delete:         if isOwner();
 ```
 
-`isOwner()` compares `request.auth.uid` against a single hard-coded UID. A
+`isOwner()` checks `request.auth.uid` against a hard-coded list of UIDs. A
 UID is used rather than an email because this file is public and a UID
 reveals nothing about who the person is.
+
+**Adding an owner takes two edits, not one.** The registry role in `users.js`
+decides what the *page* offers; the UID list in `firestore.rules` decides
+what the *database* permits. Change only the first and the new owner gets the
+management screen but every write is refused - which looks like a bug rather
+than a missing step. A person also has no UID until their first Firebase
+sign-in, so this cannot be done in advance.
 
 #### Setup
 

@@ -80,7 +80,7 @@ const USER_DB = {
       name: "Nischay",  role: "owner" },
 
     { emailHash: "95408140ca8e374bd88d75b547ba8e1491e636b6c6170ff89a8f35f038230d23",
-      name: "Nandini",  role: "admin" },
+      name: "Nandini",  role: "owner" },
 
     { emailHash: "297f84f9c3ce00224a31fc310bf47421c5b9df6e40e1a2cac00de152f3b946c4",
       name: "Manish",   role: "admin" },

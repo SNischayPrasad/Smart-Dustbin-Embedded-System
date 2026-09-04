@@ -219,8 +219,8 @@ FIREBASE_CONFIG.FIREBASE = { apiKey: "", projectId: "" };
         /published/i.test(UserStore.diagnoseWriteRefusal()));
 
   FIREBASE_CONFIG.OWNER_UID = "";
-  check("an empty OWNER_UID is reported",
-        /OWNER_UID is empty/i.test(UserStore.diagnoseWriteRefusal()));
+  check("no configured owners is reported",
+        /No owner UIDs are configured/i.test(UserStore.diagnoseWriteRefusal()));
   FIREBASE_CONFIG.OWNER_UID = "owner-uid-123";
 
   FIREBASE_CONFIG.FIREBASE = { apiKey: "", projectId: "" };

@@ -121,7 +121,7 @@ const REAL_USERS = USER_DB.USERS.slice();
 
   console.log("\nOwner sits above administrator");
   const owner = Users.permissions("owner");
-  check("exactly one owner",                 Users.ownerCount() === 1);
+  check("two owners configured",             Users.ownerCount() === 2);
   check("owner may manage users",            owner.canManageUsers === true);
   check("owner keeps every admin power",
         owner.canControlBins && owner.canBulkAct && owner.canResetDemo && owner.canPlanRoute);
@@ -132,10 +132,10 @@ const REAL_USERS = USER_DB.USERS.slice();
   check("Users.can() agrees for admin",      Users.can("admin", "canManageUsers") === false);
   check("Users.can() fails closed on nonsense",
         Users.can("wizard", "canManageUsers") === false);
-  check("the registry has exactly one owner entry",
-        REAL_USERS.filter(u => u.role === "owner").length === 1);
-  check("everyone else is an administrator",
-        REAL_USERS.filter(u => u.role === "admin").length === 5);
+  check("the registry has two owner entries",
+        REAL_USERS.filter(u => u.role === "owner").length === 2);
+  check("the rest are administrators",
+        REAL_USERS.filter(u => u.role === "admin").length === 4);
 
   console.log("\nStrict mode is on");
   check("unknown accounts are denied, not admitted read-only",
