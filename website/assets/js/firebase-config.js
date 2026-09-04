@@ -74,7 +74,7 @@ const FIREBASE_CONFIG = {
 
   /* The Firebase UID of the owner - the only account allowed to change the
      admin list. Must match the UID in firestore.rules. */
-  OWNER_UID: "",
+  OWNER_UID: "LQQbMKRso0bpYoGlEgI9dJ48R3x2",
 
   /* Firestore collection holding the admin list. */
   COLLECTION: "admins"

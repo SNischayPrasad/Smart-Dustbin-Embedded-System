@@ -14,8 +14,10 @@ rules_version = '2';
 
    TO INSTALL
      Firebase console > Firestore Database > Rules
-     Replace OWNER_UID_HERE below with the owner's Firebase UID
-     (Authentication > Users > User UID), then press Publish.
+     The owner UID below is already filled in. If the project ever changes
+     hands, update it in BOTH this file and
+     website/assets/js/firebase-config.js
+     (Firebase console > Authentication > Users > User UID), then Publish.
 
    A UID is used rather than an email address for two reasons: this file is
    committed to a public repository, and a UID reveals nothing about who the
@@ -54,7 +56,7 @@ service cloud.firestore {
 
   function isOwner() {
     return request.auth != null
-        && request.auth.uid == 'OWNER_UID_HERE'
+        && request.auth.uid == 'LQQbMKRso0bpYoGlEgI9dJ48R3x2'
         && request.auth.token.email_verified == true;
   }
 
