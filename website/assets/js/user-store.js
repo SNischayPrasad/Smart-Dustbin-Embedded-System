@@ -137,6 +137,37 @@ const UserStore = (function () {
     });
   }
 
+  /* Why would a write be refused? There are three distinct causes and the
+     Firestore error message is the same for all of them, which makes this
+     the single most confusing point in the whole setup. Work it out from
+     what we can see locally, before blaming the rules. */
+  function diagnoseWriteRefusal() {
+    if (!configured()) {
+      return "Firebase is not configured - fill in firebase-config.js.";
+    }
+    const uid  = currentUid();
+    const want = String((typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.OWNER_UID) || "").trim();
+
+    if (!uid) {
+      return "You are not signed in to Firebase, so the rules see no user at " +
+             "all. Press “Connect to Firebase” above, then try again. " +
+             "(Signing in to this site with Google is not the same thing - " +
+             "Firebase needs its own session.)";
+    }
+    if (!want) {
+      return "OWNER_UID is empty in firebase-config.js, so the page cannot " +
+             "tell whether you are the owner.";
+    }
+    if (uid !== want) {
+      return "You are signed in to Firebase as " + uid + ", but the owner is " +
+             want + ". Sign in with the owner's Google account.";
+    }
+    return "You are signed in as the owner (" + uid + "), so the rules " +
+           "themselves are refusing this. That almost always means " +
+           "firestore.rules has not been published yet: Firebase console > " +
+           "Firestore Database > Rules > paste the file > Publish.";
+  }
+
   function isOwnerUid(uid) {
     const want = String((typeof FIREBASE_CONFIG !== "undefined" && FIREBASE_CONFIG.OWNER_UID) || "").trim();
     return !!want && uid === want;
@@ -229,6 +260,7 @@ const UserStore = (function () {
     signInWithGoogleIdToken: signInWithGoogleIdToken,
     signInWithPopup: signInWithPopup,
     explain: explain,
+    diagnoseWriteRefusal: diagnoseWriteRefusal,
     waitForAuth: waitForAuth,
     currentUid: currentUid,
     isOwnerUid: isOwnerUid,

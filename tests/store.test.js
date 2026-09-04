@@ -201,6 +201,33 @@ FIREBASE_CONFIG.FIREBASE = { apiKey: "", projectId: "" };
   check("waitForAuth returns at once if already signed in",
         immediate && immediate.uid === "already-here");
 
+  console.log("\ndiagnoseWriteRefusal names the actual cause");
+
+  restored = null;
+  FIREBASE_CONFIG.FIREBASE = { apiKey: "AIzaFake", projectId: "demo" };
+  FIREBASE_CONFIG.OWNER_UID = "owner-uid-123";
+  check("no Firebase session is reported as such",
+        /not signed in to Firebase/i.test(UserStore.diagnoseWriteRefusal()));
+
+  restored = { uid: "someone-else" };
+  const wrong = UserStore.diagnoseWriteRefusal();
+  check("a mismatched uid is named",  /someone-else/.test(wrong));
+  check("the expected owner is named", /owner-uid-123/.test(wrong));
+
+  restored = { uid: "owner-uid-123" };
+  check("the owner is told to publish the rules",
+        /published/i.test(UserStore.diagnoseWriteRefusal()));
+
+  FIREBASE_CONFIG.OWNER_UID = "";
+  check("an empty OWNER_UID is reported",
+        /OWNER_UID is empty/i.test(UserStore.diagnoseWriteRefusal()));
+  FIREBASE_CONFIG.OWNER_UID = "owner-uid-123";
+
+  FIREBASE_CONFIG.FIREBASE = { apiKey: "", projectId: "" };
+  check("an unconfigured project is reported",
+        /not configured/i.test(UserStore.diagnoseWriteRefusal()));
+  FIREBASE_CONFIG.FIREBASE = { apiKey: "AIzaFake", projectId: "demo" };
+
   console.log("\n----------------------------------------");
   console.log("  " + pass + " passed, " + fail + " failed");
   console.log("----------------------------------------\n");

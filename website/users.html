@@ -155,7 +155,12 @@
         <div class="row-tight" style="margin-top:.7rem">
           <button class="btn btn-sm btn-primary" id="fbConnectBtn">Connect to Firebase</button>
           <button class="btn btn-sm hidden" id="copyUidBtn">Copy UID</button>
+          <button class="btn btn-sm" id="diagBtn">Why was it refused?</button>
         </div>
+
+        <div id="diagOut" class="muted hidden"
+             style="margin-top:.7rem;padding:.7rem .85rem;background:var(--bg-soft);
+                    border-radius:var(--radius-sm);line-height:1.55"></div>
 
         <p class="muted" style="margin:.7rem 0 0">
           Signing in here talks to Firebase directly, so you can obtain a UID

@@ -128,6 +128,25 @@
     });
   }
 
+  /* A single button that answers the question the Firestore error will not:
+     three different causes all surface as "insufficient permissions". */
+  const diagBtn = document.getElementById("diagBtn");
+  if (diagBtn) {
+    diagBtn.addEventListener("click", function () {
+      const out = document.getElementById("diagOut");
+      const uid  = (typeof UserStore !== "undefined") ? UserStore.currentUid() : null;
+      const want = (typeof FIREBASE_CONFIG !== "undefined") ? FIREBASE_CONFIG.OWNER_UID : "";
+      out.classList.remove("hidden");
+      out.innerHTML =
+        "<b>Firebase configured:</b> " + (UserStore.configured() ? "yes" : "no") + "<br>" +
+        "<b>Signed in to Firebase:</b> " + (uid ? "yes" : "<b>no</b>") + "<br>" +
+        "<b>Your Firebase UID:</b> " + (uid ? uid : "none") + "<br>" +
+        "<b>Owner UID expected:</b> " + (want || "not set") + "<br>" +
+        "<b>They match:</b> " + (uid && want && uid === want ? "yes" : "<b>no</b>") + "<br><br>" +
+        escapeHtml(UserStore.diagnoseWriteRefusal());
+    });
+  }
+
   const copyUidBtn = document.getElementById("copyUidBtn");
   if (copyUidBtn) {
     copyUidBtn.addEventListener("click", async function () {
@@ -251,6 +270,11 @@
     const entry = { emailHash: hash, name: name, role: role };
 
     if (CLOUD) {
+      /* Check what we can see locally first, so the reader gets a cause
+         rather than Firestore's one-size-fits-all refusal. */
+      if (!UserStore.currentUid()) {
+        return showError(UserStore.diagnoseWriteRefusal());
+      }
       try {
         await UserStore.addUser(entry);
         entry.source = "cloud";
@@ -261,8 +285,7 @@
         toast(name + " added as " + Users.roleLabel(role) + " - live for everyone");
       } catch (e) {
         /* A refusal here is Security Rules doing their job. */
-        showError("The database refused the write: " + e.message +
-                  " (only the owner UID in firestore.rules may add people)");
+        showError("Refused by Firestore. " + UserStore.diagnoseWriteRefusal());
       }
       return;
     }
