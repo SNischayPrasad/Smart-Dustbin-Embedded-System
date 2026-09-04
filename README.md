@@ -417,9 +417,8 @@ engineering.
 
 ## Author
 
-**Nischay**
-Malla Reddy College of Engineering and Technology
-Embedded Systems course project
+**Sadhanala Nischay Prasad**
+
 
 ---
 
