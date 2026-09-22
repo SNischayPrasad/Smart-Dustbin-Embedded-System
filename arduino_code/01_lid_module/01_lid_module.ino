@@ -16,6 +16,13 @@
  *  EXPECTED BEHAVIOUR
  *    Hand within 25 cm  -> lid swings to 90 degrees
  *    Hand removed       -> lid waits 3 s, then returns to 0
+ *
+ *  NOTE - NO FULL-BIN LOCKDOWN HERE, ON PURPOSE
+ *    In the finished bin a FULL bin refuses to open for a hand. This
+ *    sketch has no level sensor, so it has no idea how full the bin is
+ *    and nothing to lock against - it opens for every hand. The lockdown
+ *    appears in 04_smart_dustbin_complete and 05_esp32_wifi_version, the
+ *    first sketches that read BOTH a hand and a level.
  **************************************************************/
 
 #include <Servo.h>

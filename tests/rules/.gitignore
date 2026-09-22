@@ -1,0 +1,7 @@
+# The emulator drops these next to whatever directory it was started in.
+# They are per-run diagnostics, not part of the tests.
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+pglite-debug.log
+.firebase/

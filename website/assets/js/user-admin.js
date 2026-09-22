@@ -307,6 +307,267 @@
     out.textContent = h + "\n\n{ emailHash: \"" + h + "\",\n  name: \"Their Name\", role: \"admin\" }";
   });
 
+  /* =======================================================================
+     CLOUD SETUP - the two things that go wrong after this page works
+
+     Everything above manages the registry. These two cards manage the gap
+     between the registry and the DATABASE, which is where the confusing
+     failures live: the page happily offers an administrator the console, and
+     then Firestore refuses every write, because the rules look somewhere the
+     page never had to.
+     ===================================================================== */
+
+  function cfg(key, dflt) {
+    if (typeof FIREBASE_CONFIG === "undefined" || !FIREBASE_CONFIG) return dflt;
+    const v = FIREBASE_CONFIG[key];
+    return (v === undefined || v === null) ? dflt : v;
+  }
+
+  /* A raw Firestore handle for the read-only probes below. UserStore owns the
+     registry collection; this is deliberately separate, because these checks
+     must be able to report that the cloud is broken without UserStore having
+     decided the same thing first and fallen back. */
+  function rawDb() {
+    if (typeof UserStore === "undefined" || !UserStore.init()) return null;
+    try { return firebase.firestore(); } catch (e) { return null; }
+  }
+
+  /* ---- Sync registry to cloud ------------------------------------------- */
+  const syncBtn = document.getElementById("syncBtn");
+  const syncOut = document.getElementById("syncOut");
+
+  function sayInSync(html) { if (syncOut) syncOut.innerHTML = html; }
+
+  if (syncBtn) {
+    if (!CLOUD) {
+      syncBtn.disabled = true;
+      syncBtn.title = "Fill in firebase-config.js first";
+      sayInSync("No cloud store is configured, so there is nothing to sync to.");
+    }
+
+    syncBtn.addEventListener("click", async function () {
+      if (!UserStore.currentUid()) {
+        sayInSync(escapeHtml(UserStore.diagnoseWriteRefusal()));
+        return;
+      }
+
+      syncBtn.disabled = true;
+      const original = syncBtn.textContent;
+      syncBtn.textContent = "Syncing…";
+      sayInSync("Reading the cloud registry…");
+
+      try {
+        const inCloud = await UserStore.loadCloud();
+        const have = {};
+        inCloud.forEach(function (c) { have[String(c.emailHash || "").toLowerCase()] = true; });
+
+        const committed = USER_DB.COMMITTED_USERS || USER_DB.USERS || [];
+        let added = 0, already = 0, skipped = 0;
+        const failed = [];
+
+        for (const u of committed) {
+          /* A committed row may carry a plain address instead of a digest.
+             Hash it here rather than writing the address - the whole point of
+             the digest is that the address never reaches the database. */
+          let hash = String(u.emailHash || "").toLowerCase();
+          if (!hash && u.email) hash = await Users.sha256Hex(Users.normalise(u.email));
+          if (hash.length !== 64 || ["owner", "admin", "viewer"].indexOf(u.role) === -1) {
+            skipped++;
+            continue;
+          }
+          if (have[hash]) { already++; continue; }
+
+          try {
+            await UserStore.addUser({ emailHash: hash, name: u.name, role: u.role });
+            added++;
+          } catch (e) {
+            failed.push(u.name);
+          }
+        }
+
+        await UserStore.hydrate();
+        working = USER_DB.USERS.map(function (x) { return Object.assign({}, x); });
+        setBackendBanner();
+        render();
+
+        let msg = "<b>" + added + "</b> added, <b>" + already + "</b> already there";
+        if (skipped) msg += ", " + skipped + " skipped (no usable digest or role)";
+        msg += ".";
+        if (failed.length) {
+          msg += "<br><br><b>Refused for:</b> " + escapeHtml(failed.join(", ")) + "<br>" +
+                 escapeHtml(UserStore.diagnoseWriteRefusal());
+        } else if (added) {
+          msg += " Those people are now recognised by the database itself, " +
+                 "not just by this page.";
+        }
+        sayInSync(msg);
+        toast(added ? added + " entr" + (added === 1 ? "y" : "ies") + " synced"
+                    : "Registry already in sync");
+      } catch (e) {
+        sayInSync("Could not sync.<br>" + escapeHtml(UserStore.explain(e)));
+      } finally {
+        syncBtn.disabled = false;
+        syncBtn.textContent = original;
+      }
+    });
+  }
+
+  /* ---- Cloud setup check ------------------------------------------------ */
+  const checkBtn = document.getElementById("cloudCheckBtn");
+  const checkOut = document.getElementById("cloudCheckOut");
+
+  /* PASS / TODO rather than a tick and a cross: every TODO here is a specific
+     thing to go and do, and the line says what it is. */
+  function checkLine(state, title, detail) {
+    const colour = state === "PASS" ? "var(--ok)" : "var(--warn)";
+    return '<div style="margin-bottom:.45rem">' +
+             '<b style="color:' + colour + ';font-family:var(--mono);font-size:12px">' +
+               state + '</b>&nbsp; ' + title +
+             (detail ? '<div style="margin-left:2.9rem;font-size:13px;opacity:.85">' +
+                       detail + '</div>' : '') +
+           '</div>';
+  }
+
+  async function runCloudCheck() {
+    const out = [];
+
+    if (!CLOUD) {
+      checkOut.innerHTML = checkLine("TODO", "Firebase is not configured",
+        "Fill in the FIREBASE block in <code>assets/js/firebase-config.js</code>.");
+      return;
+    }
+
+    /* a. Can anyone read the fleet? This is the single most useful probe on
+          the page: production Firestore denies everything until the rules are
+          published, so a refusal here explains every other failure. */
+    const db = rawDb();
+    let binSnap = null;
+    if (!db) {
+      out.push(checkLine("TODO", "Firestore SDK unavailable",
+        "This page could not create a Firestore handle."));
+    } else {
+      try {
+        binSnap = await db.collection("bins").limit(50).get();
+        out.push(checkLine("PASS", "Rules are published",
+          "The <code>bins</code> collection is readable, which is what the public map needs. " +
+          binSnap.size + " bin document" + (binSnap.size === 1 ? "" : "s") + " so far."));
+      } catch (e) {
+        out.push(checkLine("TODO", "Publish <code>firestore.rules</code>",
+          "Reading <code>bins</code> was refused: " + escapeHtml(UserStore.explain(e)) +
+          " Firebase console &gt; Firestore Database &gt; Rules &gt; paste the file &gt; Publish."));
+      }
+    }
+
+    /* b. Is this browser actually an owner as far as the database is
+          concerned? Being signed in to the SITE is a different thing. */
+    const uid = UserStore.currentUid();
+    if (!uid) {
+      out.push(checkLine("TODO", "Connect this browser to Firebase",
+        "Press &ldquo;Connect to Firebase&rdquo; above. Signing in to the site is not the same session."));
+    } else if (UserStore.isOwnerUid(uid)) {
+      out.push(checkLine("PASS", "You are an owner in the database",
+        "<code>" + escapeHtml(uid) + "</code>"));
+    } else {
+      out.push(checkLine("TODO", "This Firebase account is not an owner",
+        "<code>" + escapeHtml(uid) + "</code> is not in OWNER_UIDS. Add it to " +
+        "<code>firebase-config.js</code> and <code>firestore.rules</code>, then Publish."));
+    }
+
+    /* c. The crew account. */
+    const crew = cfg("COLLECTOR_UIDS", []);
+    if (Array.isArray(crew) && crew.length) {
+      out.push(checkLine("PASS", "Collection crew account registered",
+        crew.length + " UID" + (crew.length === 1 ? "" : "s") + " in COLLECTOR_UIDS."));
+    } else {
+      out.push(checkLine("TODO", "Create the collection crew account",
+        "1. Authentication &gt; Sign-in method &gt; enable Email/Password.<br>" +
+        "2. Authentication &gt; Users &gt; Add user: <code>" +
+          escapeHtml(String(cfg("COLLECTOR_EMAIL", "the crew address"))) +
+        "</code> with a strong password.<br>" +
+        "3. Copy its UID into COLLECTOR_UIDS in <code>firebase-config.js</code> " +
+        "<b>and</b> <code>collectorUids()</code> in <code>firestore.rules</code>, then Publish.<br>" +
+        "Until then collector.html works on the phone but every write is refused."));
+    }
+
+    /* d. Real hardware, and how recently it spoke. A board that is registered
+          but silent is a different problem from one that is not registered. */
+    const devices = cfg("DEVICE_BINS", {});
+    const deviceCount = devices && typeof devices === "object" ? Object.keys(devices).length : 0;
+    let newest = 0, newestBin = "";
+    if (binSnap) {
+      binSnap.forEach(function (doc) {
+        const dev = (doc.data() || {}).device;
+        const at = dev && dev.reportedAt && typeof dev.reportedAt.toMillis === "function"
+                 ? dev.reportedAt.toMillis() : 0;
+        if (at > newest) { newest = at; newestBin = doc.id; }
+      });
+    }
+    if (deviceCount) {
+      out.push(checkLine("PASS", "Device account registered",
+        deviceCount + " board" + (deviceCount === 1 ? "" : "s") + " in DEVICE_BINS." +
+        (newest ? " Newest report: " + escapeHtml(newestBin) + ", " + timeAgoLocal(newest) + "."
+                : " No board has reported yet.")));
+    } else {
+      out.push(checkLine("TODO", "No device registered (optional)",
+        "Only needed for a real ESP32 or a Wokwi board &mdash; the site is a complete " +
+        "demonstration without one. To add one: Authentication &gt; Users &gt; Add user with " +
+        "the address from <code>secrets.h</code>, then put its UID in DEVICE_BINS and " +
+        "<code>deviceBins()</code>." +
+        (newest ? " (Something is already reporting into " + escapeHtml(newestBin) + ", " +
+                  timeAgoLocal(newest) + ".)" : "")));
+    }
+
+    /* e. Is everyone in users.js actually in the cloud registry? */
+    try {
+      const inCloud = await UserStore.loadCloud();
+      const have = {};
+      inCloud.forEach(function (c) { have[String(c.emailHash || "").toLowerCase()] = true; });
+      const committed = USER_DB.COMMITTED_USERS || USER_DB.USERS || [];
+      const missing = committed.filter(function (u) {
+        const h = String(u.emailHash || "").toLowerCase();
+        return h && !have[h];
+      });
+      if (!missing.length) {
+        out.push(checkLine("PASS", "Committed registry is in the cloud",
+          committed.length + " committed entr" + (committed.length === 1 ? "y" : "ies") +
+          ", all present in <code>admins</code>."));
+      } else {
+        out.push(checkLine("TODO", missing.length + " committed " +
+          (missing.length === 1 ? "person is" : "people are") + " missing from the cloud",
+          escapeHtml(missing.map(function (u) { return u.name; }).join(", ")) +
+          " &mdash; press &ldquo;Sync registry to cloud&rdquo; below. Until then the database " +
+          "will refuse their writes even though this page lets them in."));
+      }
+    } catch (e) {
+      out.push(checkLine("TODO", "Could not read the cloud registry",
+        escapeHtml(UserStore.explain(e))));
+    }
+
+    checkOut.innerHTML = out.join("");
+  }
+
+  /* data.js is the fleet layer and this page has no business loading it, so
+     the one helper it would have provided is repeated here. */
+  function timeAgoLocal(ts) {
+    const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (s < 60)    return s + "s ago";
+    if (s < 3600)  return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+
+  if (checkBtn && checkOut) {
+    checkBtn.addEventListener("click", async function () {
+      checkBtn.disabled = true;
+      const original = checkBtn.textContent;
+      checkBtn.textContent = "Checking…";
+      checkOut.innerHTML = "Asking the database…";
+      try { await runCloudCheck(); }
+      catch (e) { checkOut.innerHTML = escapeHtml(UserStore.explain(e)); }
+      finally { checkBtn.disabled = false; checkBtn.textContent = original; }
+    });
+  }
+
   /* ---- copy, download, revert ------------------------------------------- */
   document.getElementById("copyBtn").addEventListener("click", async function () {
     try {

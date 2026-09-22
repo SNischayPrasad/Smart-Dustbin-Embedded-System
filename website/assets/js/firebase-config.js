@@ -88,5 +88,48 @@ const FIREBASE_CONFIG = {
   OWNER_UID: "LQQbMKRso0bpYoGlEgI9dJ48R3x2",
 
   /* Firestore collection holding the admin list. */
-  COLLECTION: "admins"
+  COLLECTION: "admins",
+
+  /* ---------------------------------------------------------------------
+     THE COLLECTION CREW
+
+     collector.html asks for a "crew password". Underneath, that is a real
+     Firebase email/password account, which matters for three reasons: the
+     password is checked by Google rather than by a comparison in this
+     repository, it is never committed anywhere, and the crew arrive at the
+     database with a UID the Security Rules can recognise.
+
+     7. Authentication > Sign-in method > enable Email/Password.
+        (Leave "Email link" off - the crew sign in with a password.)
+     8. Authentication > Users > Add user
+          email:    the address below
+          password: your choice, told to the crew, written down nowhere here
+     9. Copy the new User UID into COLLECTOR_UIDS below AND into
+        collectorUids() in firestore.rules, then Publish.
+
+     Until step 9 the crew page works on the phone but every write is refused
+     - which is correct. An empty allow-list should allow nobody, and the
+     page says as much rather than pretending the write went through.
+
+     The address is a firebaseapp.com one on purpose: it is a login, not a
+     mailbox, and nothing is ever sent to it. */
+  COLLECTOR_EMAIL: "crew@sdbs-399da.firebaseapp.com",
+  COLLECTOR_UIDS: [],
+
+  /* ---------------------------------------------------------------------
+     REAL HARDWARE
+
+     One Firebase account per board, mapped to the one bin it is allowed to
+     report for: { "<device uid>": "BIN-001" }. The map rather than a plain
+     list is the point - a board that is somehow compromised still cannot
+     file readings for bins it is not.
+
+     10. Authentication > Users > Add user, using the address and password
+         you put in arduino_code/05_esp32_wifi_version/secrets.h.
+     11. Copy that UID in here AND into deviceBins() in firestore.rules,
+         then Publish.
+
+     Leave this empty and the site is simply all-simulated, which is a
+     perfectly good demonstration. */
+  DEVICE_BINS: {}
 };

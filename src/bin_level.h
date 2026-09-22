@@ -49,6 +49,7 @@ typedef struct {
 float        binLevelCalculatePercent(float measuredDistanceCm);
 LevelReading binLevelFuse(float distanceA, float distanceB);
 BinStatus    binLevelClassify(const LevelReading *r);
+bool         binLevelIsLocked(BinStatus s);   // FULL -> the lid refuses hands
 const char*  binLevelStatusName(BinStatus s);
 
 #endif /* BIN_LEVEL_H */

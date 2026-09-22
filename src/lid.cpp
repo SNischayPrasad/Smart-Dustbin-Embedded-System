@@ -7,6 +7,8 @@ static LidState     state          = LID_CLOSED;
 static unsigned long stateEnteredAt = 0;
 static unsigned long lastSeenHandAt = 0;
 static uint16_t     openCount      = 0;
+static uint16_t     refusedCount   = 0;      // turned away while locked
+static bool         refusalLatched = false;  // one refusal per approach
 
 /* Helper: change state and remember WHEN we changed. */
 static void enterState(LidState s, unsigned long now) {
@@ -20,6 +22,8 @@ void lidInit(void) {
   state          = LID_CLOSED;
   stateEnteredAt = millis();
   openCount      = 0;
+  refusedCount   = 0;
+  refusalLatched = false;
 }
 
 /* --------------------------------------------------------------
@@ -27,18 +31,31 @@ void lidInit(void) {
  *  Call this EVERY loop(). It never blocks.
  *
  *  handDetected : true when the lid sensor sees something close
+ *  binIsLocked  : the bin is FULL - refuse hands (lockdown)
  *  now          : millis() captured once at the top of loop()
  * ------------------------------------------------------------ */
-void lidUpdate(bool handDetected, unsigned long now) {
+void lidUpdate(bool handDetected, bool binIsLocked, unsigned long now) {
   if (handDetected) {
     lastSeenHandAt = now;   // refresh the "keep open" timer
+  } else {
+    refusalLatched = false; // hand gone: the next approach counts again
   }
 
   switch (state) {
 
     case LID_CLOSED:
-      /* Trigger: a hand appeared -> command the servo open. */
-      if (handDetected) {
+      if (handDetected && binIsLocked) {
+        /* LOCKDOWN. The lid stays shut. We poll for a hand every 60 ms,
+           so without the latch one person standing there would be
+           counted - and printed - about 16 times a second. */
+        if (!refusalLatched) {
+          refusalLatched = true;
+          refusedCount++;
+          Serial.println(F("### Bin FULL - lid locked until it is emptied"));
+        }
+
+      } else if (handDetected) {
+        /* Trigger: a hand appeared -> command the servo open. */
         lidServo.write(SERVO_ANGLE_OPEN);
         openCount++;
         enterState(LID_OPENING, now);
@@ -64,7 +81,10 @@ void lidUpdate(bool handDetected, unsigned long now) {
       break;
 
     case LID_CLOSING:
-      /* Safety re-open: if a hand comes back mid-close, abort. */
+      /* Safety re-open: if a hand comes back mid-close, abort.
+         SAFETY BEATS LOCKDOWN - this happens even if the bin turned
+         FULL while the lid was coming down. A lid must never close
+         on somebody's hand, whatever the fill level says. */
       if (handDetected) {
         lidServo.write(SERVO_ANGLE_OPEN);
         enterState(LID_OPENING, now);
@@ -77,7 +97,8 @@ void lidUpdate(bool handDetected, unsigned long now) {
 
 LidState lidGetState(void)  { return state; }
 bool     lidIsOpen(void)    { return (state == LID_OPEN || state == LID_OPENING); }
-uint16_t lidGetOpenCount(void) { return openCount; }
+uint16_t lidGetOpenCount(void)    { return openCount; }
+uint16_t lidGetRefusedCount(void) { return refusedCount; }
 
 const char* lidGetStateName(void) {
   switch (state) {

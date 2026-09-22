@@ -83,7 +83,10 @@ static void taskLid(unsigned long now) {
   bool handDetected = (handDistance != INVALID_READING) &&
                       (handDistance <= HAND_DETECT_CM);
 
-  lidUpdate(handDetected, now);
+  /* The level module owns the lockdown POLICY, the lid module enforces
+     it. Passing the answer across keeps the two modules independent -
+     lid.cpp never has to know what a fill percentage is. */
+  lidUpdate(handDetected, binLevelIsLocked(binStatus), now);
 }
 
 /* ==============================================================
@@ -127,8 +130,9 @@ static void taskTelemetry(unsigned long now) {
 
   Serial.print(F("%  Fill="));   Serial.print(level.fillPercent, 0);
   Serial.print(F("%  Status=")); Serial.print(binLevelStatusName(binStatus));
-  if (level.uneven)          Serial.print(F("  [UNEVEN LOAD]"));
-  if (level.validCount == 1) Serial.print(F("  [DEGRADED: 1 sensor]"));
+  if (binLevelIsLocked(binStatus)) Serial.print(F("  [LOCKED]"));
+  if (level.uneven)                Serial.print(F("  [UNEVEN LOAD]"));
+  if (level.validCount == 1)       Serial.print(F("  [DEGRADED: 1 sensor]"));
   Serial.println();
 
   /* Machine-readable line for the dashboard / cloud bridge */
@@ -141,6 +145,8 @@ static void taskTelemetry(unsigned long now) {
   Serial.print(F(",\"sensors\":"));   Serial.print(level.validCount);
   Serial.print(F(",\"lid\":\""));     Serial.print(lidGetStateName());
   Serial.print(F("\",\"status\":\""));Serial.print(binLevelStatusName(binStatus));
-  Serial.print(F("\",\"opens\":"));   Serial.print(lidGetOpenCount());
+  Serial.print(F("\",\"locked\":"));  Serial.print(binLevelIsLocked(binStatus) ? F("true") : F("false"));
+  Serial.print(F(",\"opens\":"));     Serial.print(lidGetOpenCount());
+  Serial.print(F(",\"refused\":"));   Serial.print(lidGetRefusedCount());
   Serial.println(F("}"));
 }

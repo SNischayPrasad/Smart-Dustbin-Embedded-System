@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <title>User Management - Smart Dustbin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗑️</text></svg>">
-  <link rel="stylesheet" href="assets/css/style.css?v=28">
+  <link rel="stylesheet" href="assets/css/style.css?v=30">
 </head>
 <body>
 
@@ -14,11 +14,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="assets/js/firebase-config.js?v=28"></script>
-<script src="assets/js/user-store.js?v=28"></script>
-<script src="assets/js/auth-config.js?v=28"></script>
-<script src="assets/js/users.js?v=28"></script>
-<script src="assets/js/auth.js?v=28"></script>
+<script src="assets/js/firebase-config.js?v=30"></script>
+<script src="assets/js/user-store.js?v=30"></script>
+<script src="assets/js/auth-config.js?v=30"></script>
+<script src="assets/js/users.js?v=30"></script>
+<script src="assets/js/auth.js?v=30"></script>
 <script>
   (function () {
     if (!AUTH.requireAuth("login.html")) return;
@@ -170,6 +170,33 @@
       </div>
 
       <div class="card">
+        <div class="card-title"><h3>Cloud setup check</h3>
+          <button class="btn btn-sm" id="cloudCheckBtn">Run check</button>
+        </div>
+        <p class="muted" style="margin:0 0 .7rem">
+          Read only &mdash; it changes nothing. It asks the database the same
+          questions the live site asks, so a step you have not done yet shows
+          up here instead of as a refused write on someone else&rsquo;s phone.
+        </p>
+        <div id="cloudCheckOut" class="muted"
+             style="min-height:34px;line-height:1.7;word-break:break-word"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><h3>Sync registry to cloud</h3></div>
+        <p class="muted" style="margin:0 0 .7rem">
+          The database recognises an administrator by a document filed under
+          their address digest &mdash; <b>not</b> by the list committed in
+          <code>users.js</code>. Someone who is in the file but not in the
+          cloud can sign in here and still be refused on every write, which
+          looks like a bug and is really a missing copy. This puts the
+          committed entries there; anyone already present is left alone.
+        </p>
+        <button class="btn btn-sm btn-block" id="syncBtn">Sync registry to cloud</button>
+        <div id="syncOut" class="muted" style="margin-top:.7rem;line-height:1.7"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title"><h3>Session changes</h3></div>
         <p class="muted" style="margin:0 0 .7rem" id="pendingNote">No changes yet.</p>
         <button class="btn btn-sm btn-block" id="revertBtn">Revert to the committed registry</button>
@@ -187,6 +214,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="assets/js/user-admin.js?v=28"></script>
+<script src="assets/js/user-admin.js?v=30"></script>
 </body>
 </html>

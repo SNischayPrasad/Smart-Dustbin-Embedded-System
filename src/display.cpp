@@ -38,11 +38,16 @@ void displaySplash(void) {
 void displayUpdate(const char *lidState, float fillPercent, BinStatus status) {
 #ifdef USE_LCD
   snprintf(line0, sizeof(line0), "Lid:%-8s%s", lidState, "");
+
+  /* A locked bin shows LOCKED in place of FULL - locked always means full,
+     and it tells the person standing at the bin WHY the lid is ignoring
+     them. "Fill: 95% LOCKED" is exactly 16 characters, so it fits. */
   if (status == BIN_ERROR) {
     snprintf(line1, sizeof(line1), "SENSOR ERROR    ");
   } else {
     snprintf(line1, sizeof(line1), "Fill:%3d%% %-6s",
-             (int)(fillPercent + 0.5f), binLevelStatusName(status));
+             (int)(fillPercent + 0.5f),
+             binLevelIsLocked(status) ? "LOCKED" : binLevelStatusName(status));
   }
 
   if (strcmp(line0, prev0) != 0) {

@@ -16,16 +16,346 @@ rules_version = '2';
      Firebase console > Firestore Database > Rules
      The owner UIDs are already filled in. To add or change one, update
      BOTH this file and website/assets/js/firebase-config.js, then Publish.
+     `node tools/check-owners.js` confirms the two agree.
 
    A UID is used rather than an email address for two reasons: this file is
    committed to a public repository, and a UID reveals nothing about who the
    person is.
+
+   FIVE KINDS OF CALLER
+     owner   a UID in ownerUids(), with a verified email. Can do anything.
+     admin   any verified email whose SHA-256 has a document in `admins`
+             saying owner/admin. This is the registry users.html writes.
+     crew    a UID in collectorUids() - the ONE shared crew account that
+             collector.html signs in to. Can only do collection work.
+     device  a UID that deviceBins() maps to a bin id. Can only report that
+             one bin's readings and acknowledge its commands.
+     public  everybody else, including anonymous sign-ins. Read-only, and
+             only the `bins` collection, which carries no personal data.
+
+   WHY ANONYMOUS SIGN-IN EARNS NOTHING
+   The Firebase web API key is public by design, so anyone can create an
+   account on this project - anonymous, or email/password - and arrive here
+   with `request.auth != null`. That fact alone therefore grants nothing
+   anywhere in this file. Every privilege is pinned to a specific UID, or to
+   a verified address that the owner has already put in the registry.
    ========================================================================== */
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /* The admin registry. */
+    /* ====================================================================
+       WHO IS ASKING
+
+       These live INSIDE the match block on purpose. `database` is bound by
+       the match, so a function declared outside it cannot see the variable
+       and any get()/exists() written there will not compile.
+       ==================================================================== */
+
+    /* Owners, by Firebase UID.
+
+       A UID is used rather than an email because this file is public, and
+       because it survives someone changing their address.
+
+       TO ADD AN OWNER: have them open users.html, press "Connect to Firebase"
+       and copy the UID it shows. Add it to this list AND to OWNER_UIDS in
+       website/assets/js/firebase-config.js, then Publish. A person has no UID
+       until their first Firebase sign-in, so this cannot be done in advance. */
+    function ownerUids() {
+      return [
+        'LQQbMKRso0bpYoGlEgI9dJ48R3x2',  // Nischay
+        'D8ptwdFYwvWcZKB8Ib9TjoEY90i1'   // Nandini
+      ];
+    }
+
+    /* The shared collection-crew account (COLLECTOR_EMAIL in
+       firebase-config.js). Empty until the owner creates it.
+
+       TO FILL IN: Firebase console > Authentication > Sign-in method >
+       enable Email/Password. Then Users > Add user > the crew address with a
+       strong password. Copy the UID it shows into this list AND into
+       COLLECTOR_UIDS in firebase-config.js, then Publish.
+
+       While the list is empty, collector.html still works on the phone but
+       every write is refused - which is correct: an empty allow-list should
+       allow nobody, not everybody. */
+    function collectorUids() {
+      return [];
+    }
+
+    /* Real hardware, one account per board: { '<device uid>': 'BIN-001' }.
+       Empty until a board is registered.
+
+       TO FILL IN: Authentication > Users > Add user for the device address in
+       arduino_code/05_esp32_wifi_version/secrets.h, copy its UID, and add
+       '<uid>': 'BIN-0xx' here AND to DEVICE_BINS in firebase-config.js.
+
+       The map (rather than a plain list) is what stops a compromised board
+       from reporting readings for bins it is not. */
+    function deviceBins() {
+      return {};
+    }
+
+    function isOwner() {
+      return request.auth != null
+          && request.auth.uid in ownerUids()
+          && request.auth.token.email_verified == true;
+    }
+
+    /* The document id in `admins` is the lowercase hex SHA-256 of the
+       lowercased address, which is what users.html computes with WebCrypto.
+
+       Verified in the Firestore emulator (tests/rules): toHexString() returns
+       UPPERCASE hex, so `.lower()` is required for this to match what the
+       browser wrote. Without it every administrator would be refused, and the
+       error would say nothing about why. */
+    function emailHash() {
+      return hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
+    }
+
+    /* Guard the email claim: a token does not have to carry one. The crew and
+       device accounts do, an anonymous sign-in does not, and reading a missing
+       claim is an evaluation error rather than a false. */
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && 'email' in request.auth.token
+          && exists(/databases/$(database)/documents/admins/$(emailHash()))
+          && get(/databases/$(database)/documents/admins/$(emailHash())).data.role
+             in ['owner', 'admin'];
+    }
+
+    /* Owner first, so an owner never pays for the two document reads that
+       isAdmin() costs. A request may only make ten of those in total. */
+    function isStaff() {
+      return isOwner() || isAdmin();
+    }
+
+    function isCrew() {
+      return request.auth != null
+          && request.auth.uid in collectorUids();
+    }
+
+    function isDeviceFor(binId) {
+      return request.auth != null
+          && deviceBins().get(request.auth.uid, '') == binId;
+    }
+
+    /* ====================================================================
+       THE FLEET
+
+       One document per bin, holding ONLY the "overlay": what people and
+       devices actually did. The bins themselves - names, coordinates,
+       capacities - are committed in data.js and computed from the clock, so
+       there is nothing here to seed and nothing to keep in step.
+
+       READ IS OPEN. This is the city's public bin map; the documents carry
+       no name, address or UID, by design. Who did something is recorded in
+       `events`, which is not public.
+       ==================================================================== */
+    match /bins/{binId} {
+
+      allow read: if true;
+
+      allow create, update: if binId.matches('^BIN-[0-9]{3}$')
+                            && (staffWrite() || crewWrite() || deviceWrite(binId));
+
+      allow delete: if isOwner();
+
+      /* ---- what this write is trying to change ------------------------
+         On a create there is no `resource`, so there is nothing to diff
+         against and every key counts as changed. Note this is a TOP-LEVEL
+         comparison: editing device.fill shows up here as the key `device`. */
+      function changed() {
+        return resource == null
+             ? request.resource.data.keys().toSet()
+             : request.resource.data.diff(resource.data).affectedKeys();
+      }
+
+      function d() { return request.resource.data; }
+
+      /* ---- per-field shape checks -------------------------------------
+         Each one passes when the field is not being touched, so a write that
+         only mutes a bin is not asked to justify fields it never mentioned.
+
+         Timestamps must EQUAL request.time. That is what stops a backdated
+         "collected at" being used to make a full bin look freshly emptied;
+         clients send FieldValue.serverTimestamp() and the firmware sends the
+         REST REQUEST_TIME transform, both of which evaluate to request.time. */
+      function okCollectedAt() {
+        return !('collectedAt' in changed()) || d().collectedAt == request.time;
+      }
+
+      /* Required on every staff and crew write - it is what marks the overlay
+         as "a person touched this". Checking the key is present before
+         reading it means a write that simply forgot it is denied by a rule
+         rather than by an evaluation error: the same refusal, but one of the
+         two is legible in the Firestore logs when you are trying to find out
+         why a button did nothing. */
+      function okUpdatedAt() {
+        return 'updatedAt' in d() && d().updatedAt == request.time;
+      }
+
+      /* Crew writes must say 'crew'; staff writes must say who they are. A
+         crew member cannot sign the collection off as an administrator. */
+      function okRole(allowed) {
+        return !('collectedByRole' in changed()) || d().collectedByRole in allowed;
+      }
+
+      function okManual() {
+        return !('manual' in changed()) || d().manual is bool;
+      }
+
+      function okMuted() {
+        return !('muted' in changed()) || d().muted is bool;
+      }
+
+      function okOnline() {
+        return !('online' in changed()) || d().online is bool;
+      }
+
+      /* null is a real value here: it means "no override, back to automatic". */
+      function okLidOverride() {
+        return !('lidOverride' in changed())
+            || d().lidOverride == null
+            || d().lidOverride in ['OPEN', 'CLOSED'];
+      }
+
+      /* The command queued for a device-linked bin. `id` is what the board
+         echoes back in commandAck, so it must be there and it must be short. */
+      function okCommand(allowedCmds) {
+        return !('command' in changed()) || (
+               d().command.keys().hasOnly(['cmd', 'id', 'at', 'byRole'])
+            && d().command.keys().hasAll(['cmd', 'id', 'at', 'byRole'])
+            && d().command.cmd in allowedCmds
+            && d().command.id is string
+            && d().command.id.size() >= 1
+            && d().command.id.size() <= 40
+            && d().command.at == request.time
+            && d().command.byRole is string
+            && d().command.byRole.size() <= 12
+        );
+      }
+
+      /* A board's own readings. fill/fillA/fillB may be -1: that is how the
+         firmware reports a sensor with no echo, and refusing it would make a
+         broken sensor look like a broken network. */
+      function okDevice() {
+        return !('device' in changed()) || (
+               d().device.keys().hasOnly(['fill', 'fillA', 'fillB', 'lid', 'status',
+                                          'locked', 'opens', 'refused', 'errors',
+                                          'sensors', 'rssi', 'firmware', 'reportedAt'])
+            && 'reportedAt' in d().device
+            && d().device.reportedAt == request.time
+            && (!('fill'     in d().device) || d().device.fill     is int)
+            && (!('fillA'    in d().device) || d().device.fillA    is int)
+            && (!('fillB'    in d().device) || d().device.fillB    is int)
+            && (!('opens'    in d().device) || d().device.opens    is int)
+            && (!('refused'  in d().device) || d().device.refused  is int)
+            && (!('errors'   in d().device) || d().device.errors   is int)
+            && (!('sensors'  in d().device) || d().device.sensors  is int)
+            && (!('rssi'     in d().device) || d().device.rssi     is int)
+            && (!('locked'   in d().device) || d().device.locked   is bool)
+            && (!('lid'      in d().device) || (d().device.lid is string
+                                                && d().device.lid.size() <= 12))
+            && (!('status'   in d().device) || (d().device.status is string
+                                                && d().device.status.size() <= 20))
+            && (!('firmware' in d().device) || (d().device.firmware is string
+                                                && d().device.firmware.size() <= 20))
+        );
+      }
+
+      function okCommandAck() {
+        return !('commandAck' in changed()) || (
+               d().commandAck.keys().hasOnly(['id', 'result', 'at'])
+            && d().commandAck.keys().hasAll(['id', 'result', 'at'])
+            && d().commandAck.id is string
+            && d().commandAck.id.size() <= 40
+            && d().commandAck.result is string
+            && d().commandAck.result.size() <= 80
+            && d().commandAck.at == request.time
+        );
+      }
+
+      /* ---- the three kinds of writer ----------------------------------
+
+         Staff run the fleet, but NOT the hardware: `device` and `commandAck`
+         are missing from this list on purpose. Those are a board's account of
+         itself, and a dashboard that could edit them could make a bin claim
+         to be empty without anyone emptying it. */
+      function staffWrite() {
+        return isStaff()
+            && changed().hasOnly(['collectedAt', 'collectedByRole', 'manual',
+                                  'lidOverride', 'muted', 'online', 'command',
+                                  'updatedAt'])
+            && okUpdatedAt()
+            && okCollectedAt()
+            && okRole(['owner', 'admin'])
+            && okManual() && okLidOverride() && okMuted() && okOnline()
+            && okCommand(['OPEN', 'CLOSE', 'AUTO', 'MUTE', 'UNMUTE', 'EMPTY', 'PING']);
+      }
+
+      /* The crew's world is narrower than the dashboard's, and deliberately
+         so: they empty bins and force a full lid open, and that is all. No
+         muting a buzzer, no PING, no claiming to be an administrator. */
+      function crewWrite() {
+        return isCrew()
+            && changed().hasOnly(['collectedAt', 'collectedByRole', 'manual',
+                                  'lidOverride', 'command', 'updatedAt'])
+            && okUpdatedAt()
+            && okCollectedAt()
+            && okRole(['crew'])
+            && okManual() && okLidOverride()
+            && okCommand(['OPEN', 'CLOSE', 'AUTO', 'EMPTY']);
+      }
+
+      /* A board may write its own readings and acknowledge its own commands,
+         on its own bin, and nothing else. It never writes updatedAt - that
+         field means "a person changed this". */
+      function deviceWrite(binId) {
+        return isDeviceFor(binId)
+            && changed().hasOnly(['device', 'commandAck'])
+            && okDevice()
+            && okCommandAck();
+      }
+    }
+
+    /* ====================================================================
+       THE ACTIVITY LOG
+
+       Append-only, and the one place a human NAME is stored - which is why,
+       unlike `bins`, it is not public. `uid` is pinned to the caller so an
+       entry cannot be written under someone else's account, and `t` is pinned
+       to request.time so the feed cannot be reordered after the fact.
+       ==================================================================== */
+    match /events/{eventId} {
+
+      allow read: if isStaff() || isCrew();
+
+      allow create: if (isStaff() || isCrew())
+                    && request.resource.data.keys()
+                         .hasOnly(['t', 'binId', 'msg', 'level', 'by', 'uid'])
+                    && request.resource.data.keys()
+                         .hasAll(['t', 'binId', 'msg', 'level', 'by', 'uid'])
+                    && request.resource.data.t == request.time
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.binId is string
+                    && request.resource.data.binId.size() <= 12
+                    && request.resource.data.msg is string
+                    && request.resource.data.msg.size() > 0
+                    && request.resource.data.msg.size() <= 140
+                    && request.resource.data.level in ['info', 'success', 'warn', 'error']
+                    && request.resource.data.by is string
+                    && request.resource.data.by.size() <= 60;
+
+      /* An append-only log that can be edited is not a log. */
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+
+    /* ====================================================================
+       THE ADMIN REGISTRY (unchanged)
+       ==================================================================== */
     match /admins/{docId} {
 
       /* Anyone signed in with a verified Google account may READ the list.
@@ -44,45 +374,23 @@ service cloud.firestore {
       allow delete:         if isOwner();
     }
 
+    /* Shape checking, so a compromised owner session cannot write arbitrary
+       documents into the collection. */
+    function validEntry(d) {
+      return d.keys().hasOnly(['emailHash', 'name', 'role', 'addedAt', 'addedBy'])
+          && d.emailHash is string
+          && d.emailHash.size() == 64
+          && d.name is string
+          && d.name.size() > 0
+          && d.name.size() <= 60
+          && d.role in ['owner', 'admin', 'viewer'];
+    }
+
     /* Everything else is closed. A rule that is not written is a rule that
        denies, and relying on that default is safer than trying to enumerate
        what should be blocked. */
     match /{document=**} {
       allow read, write: if false;
     }
-  }
-
-  /* Owners, by Firebase UID.
-
-     A UID is used rather than an email because this file is public, and
-     because it survives someone changing their address.
-
-     TO ADD AN OWNER: have them open users.html, press "Connect to Firebase"
-     and copy the UID it shows. Add it to this list AND to OWNER_UIDS in
-     website/assets/js/firebase-config.js, then Publish. A person has no UID
-     until their first Firebase sign-in, so this cannot be done in advance. */
-  function ownerUids() {
-    return [
-      'LQQbMKRso0bpYoGlEgI9dJ48R3x2',  // Nischay
-      'D8ptwdFYwvWcZKB8Ib9TjoEY90i1'   // Nandini
-    ];
-  }
-
-  function isOwner() {
-    return request.auth != null
-        && request.auth.uid in ownerUids()
-        && request.auth.token.email_verified == true;
-  }
-
-  /* Shape checking, so a compromised owner session cannot write arbitrary
-     documents into the collection. */
-  function validEntry(d) {
-    return d.keys().hasOnly(['emailHash', 'name', 'role', 'addedAt', 'addedBy'])
-        && d.emailHash is string
-        && d.emailHash.size() == 64
-        && d.name is string
-        && d.name.size() > 0
-        && d.name.size() <= 60
-        && d.role in ['owner', 'admin', 'viewer'];
   }
 }

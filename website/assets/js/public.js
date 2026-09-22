@@ -27,15 +27,29 @@
   }
 
   /* The pill under the heading says whether these numbers are the shared
-     city fleet or this browser's own demo copy. */
+     city fleet or this browser's own demo copy.
+
+     A visitor is not the right audience for a cloud error: the page falls
+     back to the same simulation it has always run, so nothing is broken from
+     where they are standing. They get the honest label - this browser's own
+     copy - and the reason waits in the tooltip for whoever is debugging.  */
   function renderCloud() {
     const pill = document.getElementById("cloudPill");
     if (!pill) return;
-    const st = (typeof FleetCloud !== "undefined") ? FleetCloud.status().state : "off";
-    const text = { live: "Live - shared cloud data", connecting: "Connecting...",
-                   error: "Offline copy - cloud unreachable", off: "Local demo" };
-    pill.setAttribute("data-state", st === "off" ? "local" : st);
-    pill.textContent = text[st] || text.off;
+
+    const s = (typeof FleetCloud !== "undefined") ? FleetCloud.status() : { state: "off" };
+    const live = s.state === "live";
+
+    pill.setAttribute("data-state", live ? "live" : (s.state === "connecting" ? "connecting" : "local"));
+    pill.textContent = live ? "Live city data"
+                    : s.state === "connecting" ? "Connecting..."
+                    : "Demo data - this browser";
+    pill.title = live
+      ? "Shared with the admin console and the collection crew"
+      : s.state === "error"
+        ? "The shared fleet is unreachable, so this page is simulating it locally" +
+          (s.error && s.error.code ? " (" + s.error.code + ")" : "")
+        : "Simulated in this browser - no shared fleet configured";
   }
 
   function renderTable() {

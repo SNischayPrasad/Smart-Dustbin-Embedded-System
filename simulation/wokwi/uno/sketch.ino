@@ -20,6 +20,17 @@
  *      3. DIAGNOSIS  - a large disagreement between A and B means the load
  *                      is piled to one side, which is worth reporting.
  *
+ *  FULL-BIN LOCKDOWN
+ *    A bin at FULL refuses to open for a hand. Letting one more person push
+ *    rubbish into a full bin is exactly how bins overflow onto the street,
+ *    so the lid stays shut, the red LED stays on, and each refused approach
+ *    is counted. Two things still open it:
+ *      - the safety re-open (a hand returning while the lid comes down),
+ *        because a lid must never close on somebody's hand, and
+ *      - the operator's OPEN command - the crew override used to empty it.
+ *    Emptying the bin drops it below FULL, which releases the lock.
+ *    The ESP32 build and website/assets/js/sim.js mirror this line for line.
+ *
  *  DESIGN NOTE - WHY THERE IS ALMOST NO delay() IN loop()
  *    delay() freezes the whole CPU. If the lid used delay(3000) the bin
  *    could not measure its level, blink, beep or answer commands during
@@ -128,6 +139,8 @@ unsigned long stateEnteredAt = 0;
 unsigned long lastSeenHandAt = 0;
 unsigned int  openCount      = 0;
 unsigned int  errorCount     = 0;
+unsigned int  refusedCount   = 0;      /* approaches turned away while locked */
+bool          refusalLatched = false;  /* one refusal per approach, not per poll */
 
 bool          buzzerEnabled  = true;
 bool          buzzerOn       = false;
@@ -152,6 +165,7 @@ void        taskTelemetry(unsigned long now);
 void        updateLidStateMachine(bool handDetected, unsigned long now);
 void        enterLidState(LidState s, unsigned long now);
 bool        lidIsOpen(void);
+bool        binLocked(void);
 const char* lidStateName(void);
 float       calculateFillPercent(float measuredDistanceCm);
 void        fuseLevelSensors(float dA, float dB);
@@ -169,6 +183,12 @@ void        selfTest(void);
  * ==================================================================== */
 void setup() {
   Serial.begin(9600);
+
+  /* readStringUntil() waits for a newline and gives up after this long.
+     The default is a full SECOND, so a half-typed command would freeze
+     loop() - and with it the lid - for a second. At 9600 baud a character
+     takes ~1 ms, so 50 ms is a generous gap and invisible to the lid. */
+  Serial.setTimeout(50);
 
   pinMode(PIN_TRIG_HAND,    OUTPUT);  pinMode(PIN_ECHO_HAND,    INPUT);
   pinMode(PIN_TRIG_LEVEL_A, OUTPUT);  pinMode(PIN_ECHO_LEVEL_A, INPUT);
@@ -228,27 +248,46 @@ void taskHandDetection(unsigned long now) {
 /**************************************************************************
  *  updateLidStateMachine()
  *
- *      +----------+  hand seen   +-----------+  travel done  +--------+
- *      |  CLOSED  |------------->|  OPENING  |-------------->|  OPEN  |
- *      +----------+              +-----------+               +--------+
- *           ^                          ^                          |
- *           | travel done              | hand returns             | no hand
- *           |                          |                          | for 3 s
- *      +----------+                    |                          |
- *      | CLOSING  |<-------------------+--------------------------+
+ *        hand seen AND locked:
+ *        stay shut, count ONE refusal
+ *        per approach
+ *          +-----+
+ *          |     |
+ *          |     v
+ *      +----------+  hand seen AND  +-----------+  travel done  +--------+
+ *      |  CLOSED  |---------------->|  OPENING  |-------------->|  OPEN  |
+ *      +----------+   NOT locked    +-----------+               +--------+
+ *           ^                             ^                          |
+ *           | travel done                 | hand returns             | no hand
+ *           |                             | (even when FULL)         | for 3 s
+ *      +----------+                       |                          |
+ *      | CLOSING  |<----------------------+--------------------------+
  *      +----------+
  *
- *  The CLOSING to OPENING edge is a safety feature: if somebody puts a
- *  hand back while the lid is coming down, it opens again immediately.
+ *      locked = (binStatus == FULL)        see binLocked()
+ *
+ *  The CLOSING to OPENING edge is a safety feature: a hand returning while
+ *  the lid is coming down re-opens it immediately - even on a bin that
+ *  turned FULL meanwhile. Safety beats lockdown. The operator's OPEN
+ *  command bypasses this machine entirely (manualOverride).
  **************************************************************************/
 void updateLidStateMachine(bool handDetected, unsigned long now) {
 
   if (handDetected) lastSeenHandAt = now;
+  else              refusalLatched = false;   /* hand gone: next approach counts */
 
   switch (lidState) {
 
     case LID_CLOSED:
-      if (handDetected) {
+      if (handDetected && binLocked()) {
+        /* The sensor polls every 60 ms, so without the latch one person
+           standing there would be counted - and printed - 16 times a second. */
+        if (!refusalLatched) {
+          refusalLatched = true;
+          refusedCount++;
+          Serial.println(F("### Bin FULL - lid locked until it is emptied"));
+        }
+      } else if (handDetected) {
         lidServo.write(ANGLE_OPEN);
         openCount++;
         enterLidState(LID_OPENING, now);
@@ -269,6 +308,8 @@ void updateLidStateMachine(bool handDetected, unsigned long now) {
       break;
 
     case LID_CLOSING:
+      /* Safety beats lockdown: even if the bin turned FULL while the lid
+         was coming down, a returning hand re-opens it. */
       if (handDetected) {                       /* safety re-open */
         lidServo.write(ANGLE_OPEN);
         enterLidState(LID_OPENING, now);
@@ -286,6 +327,13 @@ void enterLidState(LidState s, unsigned long now) {
 }
 
 bool lidIsOpen() { return (lidState == LID_OPEN || lidState == LID_OPENING); }
+
+/**************************************************************************
+ *  binLocked() - the whole lockdown policy is this one line
+ *  SENSOR_ERROR deliberately does not lock: when the level is unknown,
+ *  stranding every user would be worse than an occasional overfill.
+ **************************************************************************/
+bool binLocked() { return binStatus == BIN_FULL; }
 
 const char* lidStateName() {
   switch (lidState) {
@@ -459,11 +507,14 @@ void taskDisplay() {
   snprintf(line0, sizeof(line0), "Lid:%-7s%s", lidStateName(),
            unevenLoad ? "TILT" : (validSensors == 1 ? "1SEN" : "    "));
 
+  /* A locked bin shows LOCKED in place of FULL - locked always means full,
+     and it tells the person at the bin WHY the lid ignores them:
+     "Fill: 95% LOCKED" is exactly 16 characters. */
   if (binStatus == BIN_ERROR) {
     snprintf(line1, sizeof(line1), "SENSOR ERROR    ");
   } else {
     snprintf(line1, sizeof(line1), "Fill:%3d%% %-6s",
-             (int)(fillPercent + 0.5), binStatusName());
+             (int)(fillPercent + 0.5), binLocked() ? "LOCKED" : binStatusName());
   }
 
   /* Redraw only on change - constant redrawing floods the I2C bus. */
@@ -498,6 +549,7 @@ void taskTelemetry(unsigned long now) {
   Serial.print(F(" | Fill="));   Serial.print(fillPercent, 0); Serial.print(F("%"));
   Serial.print(F(" | Status=")); Serial.print(binStatusName());
   Serial.print(F(" | Opens="));  Serial.print(openCount);
+  if (binLocked())         Serial.print(F(" | LOCKED"));
   if (unevenLoad)          Serial.print(F(" | UNEVEN LOAD"));
   if (validSensors == 1)   Serial.print(F(" | DEGRADED 1 SENSOR"));
   Serial.println();
@@ -514,7 +566,9 @@ void taskTelemetry(unsigned long now) {
   Serial.print(F(",\"sensors\":"));     Serial.print(validSensors);
   Serial.print(F(",\"lid\":\""));       Serial.print(lidStateName());
   Serial.print(F("\",\"status\":\""));  Serial.print(binStatusName());
-  Serial.print(F("\",\"opens\":"));     Serial.print(openCount);
+  Serial.print(F("\",\"locked\":"));    Serial.print(binLocked() ? F("true") : F("false"));
+  Serial.print(F(",\"opens\":"));       Serial.print(openCount);
+  Serial.print(F(",\"refused\":"));     Serial.print(refusedCount);
   Serial.print(F(",\"errors\":"));      Serial.print(errorCount);
   Serial.print(F(",\"uptime\":"));      Serial.print(now / 1000);
   Serial.println(F("}"));
@@ -592,10 +646,15 @@ void handleSerialCommands() {
   cmd.toUpperCase();
 
   if (cmd == "OPEN") {
+    /* OPEN is also the CREW OVERRIDE: it opens a locked (FULL) bin, which
+       is how the crew gets at the rubbish. Saying so in the reply stops
+       anyone reading it as the lockdown having failed. */
+    bool wasLocked = binLocked();
     manualOverride = true;
     lidServo.write(ANGLE_OPEN);
     enterLidState(LID_OPEN, millis());
-    Serial.println(F("ACK: lid forced OPEN (manual override active)"));
+    if (wasLocked) Serial.println(F("ACK: lid forced OPEN (crew override - bin is FULL)"));
+    else           Serial.println(F("ACK: lid forced OPEN (manual override active)"));
 
   } else if (cmd == "CLOSE") {
     manualOverride = true;
@@ -609,6 +668,7 @@ void handleSerialCommands() {
 
   } else if (cmd == "MUTE") {
     buzzerEnabled = false;
+    buzzerOn      = false;
     digitalWrite(PIN_BUZZER, LOW);
     Serial.println(F("ACK: buzzer muted"));
 
@@ -617,10 +677,11 @@ void handleSerialCommands() {
     Serial.println(F("ACK: buzzer enabled"));
 
   } else if (cmd == "EMPTY") {
-    fillPercent = 0; fillA = 0; fillB = 0;
-    fillSpread  = 0; unevenLoad = false;
-    binStatus   = BIN_OK;
-    openCount   = 0;
+    fillPercent  = 0; fillA = 0; fillB = 0;
+    fillSpread   = 0; unevenLoad = false;
+    binStatus    = BIN_OK;        /* BIN_OK also releases the lock */
+    openCount    = 0;
+    refusedCount = 0;
     Serial.println(F("ACK: bin marked as collected, counters reset"));
 
   } else if (cmd == "STATUS") {
@@ -654,6 +715,7 @@ void banner() {
   Serial.println(F(" %"));
   Serial.print  (F("   Uneven-load gap: ")); Serial.print(LEVEL_DISAGREE_PCT, 0);
   Serial.println(F(" %"));
+  Serial.println(F("   Full lockdown  : ON (crew override: OPEN)"));
   Serial.println(F("=================================================="));
 }
 

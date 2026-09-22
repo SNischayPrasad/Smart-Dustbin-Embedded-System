@@ -83,6 +83,19 @@ BinStatus binLevelClassify(const LevelReading *r) {
   return BIN_OK;
 }
 
+/* --------------------------------------------------------------
+ *  binLevelIsLocked()   - the whole full-bin lockdown policy
+ *  A FULL bin refuses to open for a hand: letting one more person
+ *  push rubbish into a full bin is exactly how bins overflow onto
+ *  the street. The lid module enforces it (see lid.cpp); the
+ *  POLICY lives here, beside the thresholds that decide FULL.
+ *
+ *  BIN_ERROR deliberately does NOT lock. When the level is
+ *  unknown, stranding every user is worse than an occasional
+ *  overfill - fail usable, not fail shut.
+ * ------------------------------------------------------------ */
+bool binLevelIsLocked(BinStatus s) { return s == BIN_FULL; }
+
 const char* binLevelStatusName(BinStatus s) {
   switch (s) {
     case BIN_OK:      return "OK";

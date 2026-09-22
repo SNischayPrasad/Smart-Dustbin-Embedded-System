@@ -35,6 +35,13 @@
  *  Empty the bin, run this sketch, and read the two printed
  *  distances. They should agree within a centimetre or so. THAT
  *  number is your BIN_HEIGHT_CM. Do not guess it.
+ *
+ *  NOTE - NO FULL-BIN LOCKDOWN HERE, ON PURPOSE
+ *  In the finished bin, reaching FULL makes the lid refuse to open
+ *  for a hand. This sketch has no lid and no servo - it only
+ *  measures - so there is nothing to lock. The lockdown appears in
+ *  04_smart_dustbin_complete and 05_esp32_wifi_version, the first
+ *  sketches that have BOTH halves.
  **************************************************************/
 
 /* ---------------- PIN MAP ---------------- */
