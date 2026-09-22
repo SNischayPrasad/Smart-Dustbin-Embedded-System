@@ -78,11 +78,53 @@
 
   const toastEl = document.getElementById("toast");
   let toastTimer = null;
-  function toast(msg) {
+  function toast(msg, ms) {
     toastEl.textContent = msg;
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2600);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms || 2600);
+  }
+
+  /* ---- who is acting, for the shared activity log ---------------------- */
+  const actor = { role: session.role, label: session.name };
+
+  /* Every command goes through here. The change is applied to this page at
+     once; if the fleet is live in the cloud, the write is confirmed or
+     refused a moment later, and a refusal is worth saying out loud - it
+     means the city dashboard did NOT change, whatever this page shows.  */
+  function runCommand(binId, cmd) {
+    const r = SD.sendCommand(binId, cmd, actor);
+    toast(binId + ": " + r.message);
+    if (r.ok && r.cloud) {
+      r.cloud.then(function (res) {
+        if (res && !res.ok) {
+          toast(binId + ": not saved to the cloud - " +
+                FleetCloud.explain(res.error), 6000);
+        }
+      });
+    }
+    return r;
+  }
+
+  /* ---- where the data comes from --------------------------------------- */
+  const CLOUD_TEXT = {
+    live:       ["live",       "Live cloud",   "shared fleet in Firestore - every screen sees the same bins"],
+    connecting: ["connecting", "Connecting...", "reaching the cloud fleet"],
+    error:      ["error",      "Cloud error",  "cloud unreachable - showing this browser's copy"],
+    off:        ["local",      "Local demo",   "demo data stored in this browser"]
+  };
+
+  function renderCloud() {
+    const st = (typeof FleetCloud !== "undefined") ? FleetCloud.status() : { state: "off" };
+    const t = CLOUD_TEXT[st.state] || CLOUD_TEXT.off;
+    const pill = document.getElementById("cloudPill");
+    if (pill) {
+      pill.setAttribute("data-state", t[0]);
+      pill.textContent = t[1];
+      pill.title = st.state === "error" && st.error ? t[2] + " (" + st.error + ")" : t[2];
+    }
+    const foot = document.getElementById("footSource");
+    if (foot) foot.textContent = t[2];
   }
 
   /* =====================================================================
@@ -125,7 +167,11 @@
     document.getElementById("kOk").textContent      = s.ok;
     document.getElementById("kWarn").textContent    = s.warning;
     document.getElementById("kFull").textContent    = s.full;
-    document.getElementById("kOffline").textContent = s.offline;
+    /* A sensor fault is "no usable telemetry" too, so it shares the tile. */
+    document.getElementById("kOffline").textContent = s.offline + (s.error || 0);
+    const offSub = document.getElementById("kOfflineSub");
+    if (offSub) offSub.textContent = s.error ? "incl. " + s.error + " sensor fault" +
+                                               (s.error > 1 ? "s" : "") : "no telemetry";
     document.getElementById("kAvg").textContent     = s.avgFill + "%";
     document.getElementById("kZones").textContent   = SD.getZones().length + " zones";
   }
@@ -153,7 +199,9 @@
         '<td><div class="fill-bar"><span class="fill-' + st + '" style="width:' +
             (b.online ? fill : 0) + '%"></span></div>' +
             '<span class="muted">' + (b.online ? fill + "%" : "n/a") + '</span></td>' +
-        '<td>' + b.lid + (b.manual ? ' <span class="muted">(manual)</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(b.lid) +
+            (b.locked ? ' <span class="badge-locked">LOCKED</span>' : '') +
+            (b.manual ? ' <span class="muted">(manual)</span>' : '') + '</td>' +
         '<td class="num">' + Math.round(b.battery) + '%</td>' +
         '<td><span class="badge badge-' + st + '"><span class="dot"></span>' +
             SD.statusLabel(st) + '</span></td>' +
@@ -176,8 +224,7 @@
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         if (!perms.canControlBins) { toast("Read-only session."); return; }
-        const r = SD.sendCommand(btn.getAttribute("data-bin"), btn.getAttribute("data-row-cmd"));
-        toast(btn.getAttribute("data-bin") + ": " + r.message);
+        runCommand(btn.getAttribute("data-bin"), btn.getAttribute("data-row-cmd"));
         refresh();
       });
     });
@@ -232,7 +279,8 @@
     bar.style.width = (bin.online ? fill : 0) + "%";
     document.getElementById("selFillText").textContent = bin.online ? fill + "%" : "no data";
 
-    document.getElementById("selLid").textContent   = bin.lid + (bin.manual ? " *" : "");
+    document.getElementById("selLid").innerHTML     = escapeHtml(bin.lid + (bin.manual ? " *" : "")) +
+      (bin.locked ? ' <span class="badge-locked">LOCKED</span>' : "");
     document.getElementById("selDist").textContent  = SD.fillToDistance(fill) + " cm";
     document.getElementById("selBatt").textContent  = Math.round(bin.battery) + "%";
     document.getElementById("selRssi").textContent  = bin.rssi + " dBm";
@@ -249,8 +297,7 @@
     btn.addEventListener("click", function () {
       if (!perms.canControlBins) { toast("Read-only session - control is not permitted."); return; }
       if (!selectedId) { toast("Select a bin first."); return; }
-      const r = SD.sendCommand(selectedId, btn.getAttribute("data-cmd"));
-      toast(selectedId + ": " + r.message);
+      runCommand(selectedId, btn.getAttribute("data-cmd"));
       refresh();
     });
   });
@@ -260,56 +307,62 @@
      =================================================================== */
   document.getElementById("bulkMute").addEventListener("click", function () {
     if (!perms.canBulkAct) { toast("Read-only session."); return; }
-    const n = SD.sendBulk("MUTE", b => SD.statusOf(b) === "full");
+    const n = SD.sendBulk("MUTE", b => SD.statusOf(b) === "full", actor);
     toast(n ? "Muted " + n + " full bin(s)." : "No full bins right now.");
     refresh();
   });
 
-  /* A nearest-neighbour route: start at the fullest bin, then repeatedly
-     drive to the closest bin still on the list. This is the classic greedy
-     solution to the travelling salesman problem - good enough for a van. */
+  /* The dispatcher's quick view of the route. The same planner drives the
+     collector module (route.js): nearest-neighbour from the fullest bin, then
+     2-opt to uncross the path, then split into Google Maps links of at most
+     nine waypoints each. The crew's own page adds the depot, live GPS and
+     "mark collected" - this is the office overview. */
   document.getElementById("bulkRoute").addEventListener("click", function () {
     if (!perms.canPlanRoute) { toast("Read-only session."); return; }
-    const due = SD.getFleet()
-      .filter(b => b.online && SD.statusOf(b) !== "ok")
-      .sort((a, b) => b.fill - a.fill);
-
     const out = document.getElementById("routeOut");
+
+    const due = SD.getFleet()
+      .filter(b => b.online && (SD.statusOf(b) === "full" || SD.statusOf(b) === "warning"))
+      .sort((a, b) => b.fill - a.fill);
 
     if (!due.length) { out.textContent = "Nothing needs collecting. Every bin is under 75%."; return; }
 
-    const route = [due.shift()];
-    while (due.length) {
-      const last = route[route.length - 1];
-      let bestIdx = 0, bestDist = Infinity;
-      due.forEach(function (b, i) {
-        const d = Math.hypot(b.lat - last.lat, b.lng - last.lng);
-        if (d < bestDist) { bestDist = d; bestIdx = i; }
-      });
-      route.push(due.splice(bestIdx, 1)[0]);
+    if (typeof RoutePlanner === "undefined") {
+      out.textContent = "The route planner (route.js) did not load.";
+      return;
     }
 
-    let km = 0;
-    for (let i = 1; i < route.length; i++) {
-      km += Math.hypot(route[i].lat - route[i-1].lat, route[i].lng - route[i-1].lng) * 111;
-    }
+    /* Start at the fullest bin - it is the one most likely to overflow. */
+    const start = due[0];
+    const plan  = RoutePlanner.plan(due.slice(1), { start: start, returnToStart: false });
+    const order = [start].concat(plan.order);
+    const est   = RoutePlanner.estimate({ km: plan.km, order: order }, order, {});
+    const legs  = RoutePlanner.legs(start, plan.order, { includeOrigin: true, returnToStart: false });
 
-    out.innerHTML = '<b>' + route.length + ' stops, about ' + km.toFixed(1) +
-      ' km</b><br>' + route.map((b, i) =>
+    out.innerHTML =
+      '<b>' + order.length + ' stops, about ' + est.roadKm.toFixed(1) + ' km by road, ~' +
+      Math.round(est.minutes) + ' min, ' + Math.round(est.litres) + ' L</b><br>' +
+      order.map((b, i) =>
         (i + 1) + ". " + escapeHtml(b.id) + " " + escapeHtml(b.name) +
-        " (" + Math.round(b.fill) + "%)").join("<br>");
+        " (" + Math.round(b.fill) + "%" + (b.locked ? ", locked" : "") + ")").join("<br>") +
+      '<div class="row-tight" style="margin-top:.6rem">' +
+        legs.map(l => '<a class="btn btn-sm" target="_blank" rel="noopener" href="' +
+          escapeHtml(l.url) + '">Google Maps' + (legs.length > 1 ? " leg " + l.index : "") +
+          '</a>').join("") +
+      '</div>';
 
-    SD.addLog("FLEET", "Collection route planned: " + route.length + " stops", "success");
+    SD.addLog("FLEET", "Collection route planned: " + order.length + " stops", "success");
     refresh();
   });
 
   document.getElementById("resetDemo").addEventListener("click", function () {
     if (!perms.canResetDemo) { toast("Read-only session."); return; }
-    if (!confirm("Reset all demo bins to their starting values?")) return;
+    if (!confirm("Reset this browser's demo overrides and activity log? " +
+                 "The shared cloud fleet is not touched.")) return;
     SD.reset();
     selectedId = null;
     document.getElementById("routeOut").textContent = "";
-    toast("Demo data reset.");
+    toast("Local demo data reset.");
     refresh();
   });
 
@@ -341,10 +394,14 @@
 
     document.getElementById("activityFeed").innerHTML = log.map(function (e) {
       const colour = { error:"#f87171", warn:"#fbbf24", success:"#4ade80", info:"var(--text-dim)" }[e.level];
+      /* Cloud events say who did it - with several people on the fleet,
+         "marked as collected" is only useful if you know by whom. */
       return '<div class="alert-item">' +
                '<time>' + clockTime(e.t) + '</time>' +
                '<div><b>' + escapeHtml(e.binId) + '</b> ' +
-               '<span style="color:' + colour + '">' + escapeHtml(e.msg) + '</span></div>' +
+               '<span style="color:' + colour + '">' + escapeHtml(e.msg) + '</span>' +
+               (e.by ? ' <span class="muted">- ' + escapeHtml(e.by) + '</span>' : '') +
+               '</div>' +
              '</div>';
     }).join("");
   }
@@ -357,9 +414,24 @@
     renderTable();
     renderSelected();
     renderActivity();
+    renderDeviceCloud();
+    renderCloud();
     map.setBins(SD.getFleet());
   }
 
+  /* ---- the cloud fleet -------------------------------------------------
+     FleetCloud streams every bin's live overrides and the shared activity
+     log. Each arrival repaints the page, so a collector marking a bin as
+     emptied on their phone shows up here within a second.             */
+  if (typeof FleetCloud !== "undefined") {
+    FleetCloud.onStatus(renderCloud);
+    FleetCloud.start();
+  }
+  if (typeof SD.onChange === "function") {
+    SD.onChange(function () { SD.tick(); refresh(); });
+  }
+
+  SD.tick();
   refresh();
   map.fitAll();
 
@@ -415,9 +487,50 @@
   /* =====================================================================
      7. LIVE ESP32 DEVICE
      --------------------------------------------------------------------
+     7a. Through the cloud (the normal path). A board running the ESP32
+     sketch with secrets.h pushes its telemetry into its bin's Firestore
+     document; data.js marks that bin as device-linked, and this card shows
+     what it last said. Nothing here talks to the board directly.
+     =================================================================== */
+  function renderDeviceCloud() {
+    const box = document.getElementById("deviceCloud");
+    if (!box) return;
+
+    const linked = SD.getFleet().filter(b => b.source === "device");
+    if (!linked.length) {
+      box.innerHTML = '<div class="muted">No device has reported yet. ' +
+        (typeof FleetCloud !== "undefined" && FleetCloud.status().state === "live"
+          ? "The cloud is live - flash the ESP32 sketch with secrets.h, or run it in Wokwi."
+          : "The cloud fleet is not connected, so a device could not report here.") +
+        '</div>';
+      return;
+    }
+
+    box.innerHTML = linked.map(function (b) {
+      const st = SD.statusOf(b);
+      const pct = v => (typeof v === "number" && v >= 0) ? Math.round(v) + "%" : "--";
+      return '<div class="readout device-readout">' +
+        '<div><div class="k">Bin</div><div class="v">' + escapeHtml(b.id) + '</div></div>' +
+        '<div><div class="k">State</div><div class="v"><span class="badge badge-' + st +
+          '"><span class="dot"></span>' + SD.statusLabel(st) + '</span></div></div>' +
+        '<div><div class="k">Fill (A / B)</div><div class="v">' + pct(b.fill) +
+          ' <span class="muted">(' + pct(b.fillA) + ' / ' + pct(b.fillB) + ')</span></div></div>' +
+        '<div><div class="k">Lid</div><div class="v">' + escapeHtml(b.lid) +
+          (b.locked ? ' <span class="badge-locked">LOCKED</span>' : '') + '</div></div>' +
+        '<div><div class="k">Turned away</div><div class="v">' + (b.refused || 0) + '</div></div>' +
+        '<div><div class="k">Last report</div><div class="v" style="font-size:.95rem">' +
+          timeAgo(b.lastSeen) + (b.online ? "" : " (stale)") + '</div></div>' +
+      '</div>';
+    }).join("");
+  }
+
+  /* =====================================================================
+     7b. Direct IP (same Wi-Fi, no cloud)
+     --------------------------------------------------------------------
      Polls http://<ip>/api/status every 3 seconds. The ESP32 sketch sends
      an Access-Control-Allow-Origin header, which is what lets this page
-     read the response from a different origin.
+     read the response from a different origin. From the live https://
+     site the browser blocks it as mixed content - see the note on the page.
      =================================================================== */
   const devOut = document.getElementById("deviceOut");
   let devTimer = null;
@@ -439,15 +552,11 @@
 
       devPrint(clockTime(Date.now()) + "  " + JSON.stringify(data));
 
-      /* Fold the real reading into the fleet so it shows up on the map. */
-      const bin = SD.getBin(data.id);
-      if (bin) {
-        bin.fill     = data.fill;
-        bin.lid      = data.lid;
-        bin.online   = true;
-        bin.opens    = data.opens;
-        bin.lastSeen = Date.now();
-        SD.save();
+      /* Fold the real reading into this browser's fleet so it shows up on
+         the map, exactly as a cloud report would - but only here. */
+      if (SD.getBin(data.id) && typeof SD.applyLocalDevice === "function") {
+        SD.applyLocalDevice(data.id, data);
+        SD.tick();
         refresh();
       }
     } catch (err) {

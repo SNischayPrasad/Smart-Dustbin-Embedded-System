@@ -23,6 +23,7 @@
       <a href="#simulation">Try it</a>
       <a href="#tech">Technology</a>
       <a href="#project">Project</a>
+      <a href="collector.html">Crew</a>
       <a href="login.html" class="btn btn-sm btn-primary" style="margin-left:.4rem">Admin login</a>
     </nav>
   </div>
@@ -33,7 +34,7 @@
   <span class="eyebrow">Smart Dustbin</span>
   <h1>It opens by itself.<br>And it tells the city<br>when it is full.</h1>
   <p>
-    Three ultrasonic sensors, one servo motor and an Arduino UNO. One sensor
+    Three ultrasonic sensors, one servo motor and an ESP32. One sensor
     watches the front and lifts the lid before you touch it. Two more sit
     inside and measure the waste from opposite corners, so an uneven pile of
     rubbish never fools the reading.
@@ -47,10 +48,14 @@
 <!-- ============================================================ LIVE DATA -->
 <section class="container section" id="live">
   <h2>Live city status</h2>
-  <p>Every bin reports its fill level. Anything above 90% is flagged for immediate collection.</p>
+  <p>
+    Every bin reports its fill level. Anything above 90% is flagged for immediate
+    collection - and locks its lid, so nobody can push more rubbish into it.
+    <span class="cloud-pill" id="cloudPill" data-state="local">Local demo</span>
+  </p>
 
   <div class="kpi-grid" style="margin-bottom:1.25rem">
-    <div class="kpi is-info"><div class="label">Bins deployed</div><div class="value" id="kTotal">-</div><div class="sub">across 10 zones</div></div>
+    <div class="kpi is-info"><div class="label">Bins deployed</div><div class="value" id="kTotal">-</div><div class="sub" id="kZones">across the city</div></div>
     <div class="kpi is-ok"><div class="label">Normal</div><div class="value" id="kOk">-</div><div class="sub">below 75% full</div></div>
     <div class="kpi is-warn"><div class="label">Near full</div><div class="value" id="kWarn">-</div><div class="sub">75% to 89%</div></div>
     <div class="kpi is-full"><div class="label">Needs collection</div><div class="value" id="kFull">-</div><div class="sub">90% and above</div></div>
@@ -142,6 +147,8 @@
           <div><div class="k">Red LED</div><div class="v" data-sim="red">OFF</div></div>
           <div><div class="k">Buzzer</div><div class="v" data-sim="buzzer">SILENT</div></div>
           <div><div class="k">Lid opens</div><div class="v" data-sim="opens">0</div></div>
+          <div><div class="k">Full lockdown</div><div class="v" data-sim="locked">no</div></div>
+          <div><div class="k">Turned away</div><div class="v" data-sim="refused">0</div></div>
         </div>
       </div>
     </div>
@@ -284,7 +291,13 @@
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Firestore only (no auth): the public page reads the shared fleet but can
+     never write to it - the Security Rules make bins world-readable only. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="assets/js/firebase-config.js?v=28"></script>
 <script src="assets/js/data.js?v=28"></script>
+<script src="assets/js/fleet-cloud.js?v=28"></script>
 <script src="assets/js/map.js?v=28"></script>
 <script src="assets/js/sim.js?v=28"></script>
 <script src="assets/js/simulator.js?v=28"></script>

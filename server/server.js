@@ -16,7 +16,13 @@
      POST /api/logout
      GET  /api/session
      GET  /api/bins                                       (requires the cookie)
+          each bin carries "status" and "locked" (full = locked, as on the board)
      POST /api/bins/:id/command   { cmd }                 (requires the cookie)
+          OPEN CLOSE AUTO MUTE UNMUTE EMPTY PING. An offline bin only answers
+          PING. OPEN on a FULL (locked) bin is the crew override: it succeeds.
+
+   The fleet is seeded from data/bins.json - the same 48 bins as the website
+   (it is generated from SEED in website/assets/js/data.js).
    ========================================================================== */
 
 const http = require("http");
@@ -55,9 +61,17 @@ const SESSION_MS = 2 * 60 * 60 * 1000;
 
 /* ----------------------------------------------------------------- data -- */
 function loadFleet() {
-  try { return JSON.parse(fs.readFileSync(DATAFILE, "utf8")); } catch (e) {}
-  try { return JSON.parse(fs.readFileSync(SEEDFILE, "utf8")).bins; } catch (e) {}
-  return [];
+  let seed = [], saved = null;
+  try { seed = JSON.parse(fs.readFileSync(SEEDFILE, "utf8")).bins || []; } catch (e) {}
+  try { saved = JSON.parse(fs.readFileSync(DATAFILE, "utf8")); } catch (e) {}
+  if (!Array.isArray(saved)) return seed;
+  if (!seed.length) return saved;
+
+  /* A fleet.json written from an older, smaller seed: keep the saved state
+     of the bins it knows about and add the new ones from the seed. */
+  const byId = {};
+  saved.forEach(b => { if (b && b.id) byId[b.id] = b; });
+  return seed.map(s => byId[s.id] || s);
 }
 function saveFleet(fleet) {
   try { fs.writeFileSync(DATAFILE, JSON.stringify(fleet, null, 2)); } catch (e) {}
@@ -126,13 +140,31 @@ function statusOf(bin) {
   return "ok";
 }
 
+/* LOCKDOWN, the same rule as the firmware: a FULL bin will not open for a
+   hand until it is emptied. Only a person (the OPEN command) can force it. */
+function isLocked(bin) {
+  return !!bin.online && bin.fill >= FULL;
+}
+
+function withDerived(bin) {
+  return Object.assign({}, bin, { status: statusOf(bin), locked: isLocked(bin) });
+}
+
 const COMMANDS = {
-  OPEN:   b => { b.lid = "OPEN";   b.manual = true;  return "Lid forced open"; },
+  OPEN:   b => { const forced = isLocked(b);
+                 b.lid = "OPEN"; b.manual = true;
+                 return forced ? "Lid opened - crew override on a FULL bin" : "Lid forced open"; },
   CLOSE:  b => { b.lid = "CLOSED"; b.manual = true;  return "Lid forced closed"; },
-  AUTO:   b => { b.manual = false;                   return "Automatic mode"; },
+  /* Back to the sensors. A still-full bin re-locks, so its lid shuts. */
+  AUTO:   b => { b.manual = false;
+                 if (isLocked(b)) { b.lid = "CLOSED"; return "Automatic mode - bin FULL, lid locked"; }
+                 return "Automatic mode"; },
   MUTE:   b => { b.muted = true;                     return "Buzzer muted"; },
   UNMUTE: b => { b.muted = false;                    return "Buzzer enabled"; },
-  EMPTY:  b => { b.fill = 0; b.opens = 0;            return "Marked as collected"; },
+  /* Emptying releases the lock and clears the turned-away counter. */
+  EMPTY:  b => { const wasLocked = isLocked(b);
+                 b.fill = 0; b.opens = 0; b.refused = 0;
+                 return wasLocked ? "Marked as collected - lock released" : "Marked as collected"; },
   PING:   b => { b.online = true;                    return "Device responded"; }
 };
 
@@ -193,7 +225,7 @@ const server = http.createServer(async function (req, res) {
     if (pathname === "/api/bins" && req.method === "GET") {
       return sendJson(res, 200, {
         ok: true,
-        bins: fleet.map(b => Object.assign({}, b, { status: statusOf(b) }))
+        bins: fleet.map(withDerived)
       });
     }
 
@@ -203,16 +235,24 @@ const server = http.createServer(async function (req, res) {
       if (!bin) return sendJson(res, 404, { ok: false, message: "Unknown bin" });
 
       const body = await readBody(req);
-      const fn = COMMANDS[String(body.cmd || "").toUpperCase()];
+      const cmd = String(body.cmd || "").toUpperCase();
+      /* hasOwnProperty: "constructor" or "__proto__" is not a command. */
+      const fn = Object.prototype.hasOwnProperty.call(COMMANDS, cmd) ? COMMANDS[cmd] : null;
       if (!fn) return sendJson(res, 400, { ok: false, message: "Unknown command" });
+
+      /* A dead device cannot act on anything - it can only be pinged. */
+      if (!bin.online && cmd !== "PING") {
+        return sendJson(res, 409, { ok: false, message: "Device is offline. Try PING first.",
+                                    bin: withDerived(bin) });
+      }
 
       const message = fn(bin);
       bin.lastSeen = Date.now();
       saveFleet(fleet);
 
       console.log("[" + new Date().toISOString() + "] " + user.username +
-                  " -> " + bin.id + " " + body.cmd + " (" + message + ")");
-      return sendJson(res, 200, { ok: true, message: message, bin: bin });
+                  " -> " + bin.id + " " + cmd + " (" + message + ")");
+      return sendJson(res, 200, { ok: true, message: message, bin: withDerived(bin) });
     }
 
     return sendJson(res, 404, { ok: false, message: "No such endpoint" });
@@ -238,12 +278,19 @@ const server = http.createServer(async function (req, res) {
   });
 });
 
-server.listen(PORT, function () {
-  console.log("");
-  console.log("  Smart Dustbin server running");
-  console.log("  Public site : http://localhost:" + PORT + "/");
-  console.log("  Admin login : http://localhost:" + PORT + "/login.html");
-  console.log("  Credentials : Nischay / Admin@123");
-  console.log("  Serving     : " + ROOT);
-  console.log("");
-});
+/* Listen only when run directly (node server/server.js). When a test
+   require()s this file it gets the bin logic without opening a port. */
+if (require.main === module) {
+  server.listen(PORT, function () {
+    console.log("");
+    console.log("  Smart Dustbin server running");
+    console.log("  Public site : http://localhost:" + PORT + "/");
+    console.log("  Admin login : http://localhost:" + PORT + "/login.html");
+    console.log("  Credentials : Nischay / Admin@123");
+    console.log("  Serving     : " + ROOT);
+    console.log("  Fleet       : " + fleet.length + " bins");
+    console.log("");
+  });
+}
+
+module.exports = { COMMANDS, statusOf, isLocked, withDerived, loadFleet };

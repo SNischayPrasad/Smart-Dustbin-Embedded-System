@@ -22,6 +22,20 @@
     document.getElementById("kWarn").textContent  = s.warning;
     document.getElementById("kFull").textContent  = s.full;
     document.getElementById("kAvg").textContent   = s.avgFill + "%";
+    const zones = document.getElementById("kZones");
+    if (zones) zones.textContent = "across " + SD.getZones().length + " zones";
+  }
+
+  /* The pill under the heading says whether these numbers are the shared
+     city fleet or this browser's own demo copy. */
+  function renderCloud() {
+    const pill = document.getElementById("cloudPill");
+    if (!pill) return;
+    const st = (typeof FleetCloud !== "undefined") ? FleetCloud.status().state : "off";
+    const text = { live: "Live - shared cloud data", connecting: "Connecting...",
+                   error: "Offline copy - cloud unreachable", off: "Local demo" };
+    pill.setAttribute("data-state", st === "off" ? "local" : st);
+    pill.textContent = text[st] || text.off;
   }
 
   function renderTable() {
@@ -40,7 +54,8 @@
             '<span class="muted">' + (bin.online ? fill + "%" : "no data") + '</span>' +
           '</td>' +
           '<td><span class="badge badge-' + status + '">' +
-            '<span class="dot"></span>' + SD.statusLabel(status) + '</span></td>' +
+            '<span class="dot"></span>' + SD.statusLabel(status) + '</span>' +
+            (bin.locked ? ' <span class="badge-locked">LOCKED</span>' : '') + '</td>' +
           '<td class="muted">' + timeAgo(bin.lastSeen) + '</td>' +
         '</tr>';
     }).join("");
@@ -61,6 +76,7 @@
   function refresh() {
     renderKpis();
     renderTable();
+    renderCloud();
     map.setBins(SD.getFleet());
     document.getElementById("lastUpdate").textContent =
       "updated " + clockTime(Date.now());
@@ -70,7 +86,18 @@
      same module, so the two cannot drift apart. */
   initSimulator("[data-simulator]", { deviceId: "BIN-DEMO" });
 
+  /* The shared fleet. Anything a collector or an administrator does - or a
+     real bin reports - arrives here within a second, with no refresh. */
+  if (typeof FleetCloud !== "undefined") {
+    FleetCloud.onStatus(renderCloud);
+    FleetCloud.start();
+  }
+  if (typeof SD.onChange === "function") {
+    SD.onChange(function () { SD.tick(); refresh(); });
+  }
+
   /* First paint, then a live tick every 5 seconds. */
+  SD.tick();
   refresh();
   map.fitAll();
 

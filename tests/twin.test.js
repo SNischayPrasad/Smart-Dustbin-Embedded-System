@@ -168,6 +168,90 @@ check("EMPTY resets fill", Math.round(c.fillPercent), 0);
 check("EMPTY resets open counter", c.openCount, 0);
 check("unknown command is rejected", c.command("XYZ").slice(0, 3), "ERR");
 
+/* ---------- 7. full-bin lockdown ---------- */
+console.log("\nFull-bin lockdown");
+
+/* A bin that has just been measured as FULL, lid closed, nobody near it. */
+function fullBin() {
+  const b = new FirmwareTwin();
+  b.wasteDistance = 1;            /* 97% */
+  b.step(0);
+  return b;
+}
+
+let lk = fullBin();
+check("FULL bin reports locked", lk.locked, true);
+lk.handDistance = 10; lk.step(100);
+check("hand at a FULL bin -> lid stays CLOSED", lk.lidState, "CLOSED");
+check("a refused approach does not count as an opening", lk.openCount, 0);
+check("the refusal is counted", lk.refusedCount, 1);
+lk.step(160); lk.step(220); lk.step(900);
+check("still CLOSED while the hand lingers", lk.lidState, "CLOSED");
+check("one person lingering is ONE refusal, not one per poll", lk.refusedCount, 1);
+lk.handDistance = 80; lk.step(1000);
+lk.handDistance = 10; lk.step(1100);
+check("a second approach is a second refusal", lk.refusedCount, 2);
+check("telemetry says LOCKED", lk.telemetryLine().indexOf("| LOCKED") > 0, true);
+check("JSON carries locked and refused",
+      [JSON.parse(lk.jsonLine()).locked, JSON.parse(lk.jsonLine()).refused], [true, 2]);
+
+/* Near-full is not full: a WARNING bin must still open. */
+const warnBin = new FirmwareTwin();
+warnBin.wasteDistance = 6;       /* 80% */
+warnBin.step(0);
+warnBin.handDistance = 10; warnBin.step(100);
+check("WARNING bin (80%) is not locked", warnBin.locked, false);
+check("WARNING bin still opens for a hand", warnBin.lidState, "OPENING");
+
+/* A dead level sensor must not strand users. */
+const errBin = new FirmwareTwin();
+errBin.wasteDistanceA = -1; errBin.wasteDistanceB = -1;
+errBin.step(0);
+errBin.handDistance = 10; errBin.step(100);
+check("SENSOR_ERROR does not lock", errBin.locked, false);
+check("SENSOR_ERROR bin still opens", errBin.lidState, "OPENING");
+
+/* Crew override: OPEN still works on a locked bin, and says so. */
+lk = fullBin();
+const ack = lk.command("OPEN");
+check("OPEN on a locked bin opens it", lk.lidState, "OPEN");
+check("the ACK names the crew override", ack.indexOf("crew override") > 0, true);
+lk.command("AUTO");
+lk.handDistance = 80;
+lk.step(4000); lk.step(4500);           /* hold expires, lid travels shut */
+lk.step(5600);                          /* re-measured: still FULL        */
+check("after AUTO a still-full bin closes", lk.lidState, "CLOSED");
+lk.handDistance = 10; lk.step(5700);
+check("...and re-locks against the next hand", lk.lidState, "CLOSED");
+
+/* Emptying releases the lock. */
+lk = fullBin();
+lk.handDistance = 10; lk.step(100);
+lk.command("EMPTY");
+check("EMPTY releases the lock", lk.locked, false);
+check("EMPTY resets the refusal counter", lk.refusedCount, 0);
+lk.handDistance = 80; lk.step(200);
+lk.handDistance = 10; lk.step(300);
+check("an emptied bin opens again", lk.lidState, "OPENING");
+
+/* The crew emptied it without the command: the sensors see it drop. */
+lk = fullBin();
+lk.wasteDistance = 30; lk.forceLevelSample(); lk.step(100);
+check("a level reading below FULL releases the lock", lk.locked, false);
+
+/* Safety beats lockdown: the bin turns FULL while the lid is coming down
+   and a hand comes back - the lid must re-open, not close on the hand. */
+const sf = new FirmwareTwin();
+sf.handDistance = 10; sf.step(0);        /* opens              */
+sf.step(500);                            /* OPEN               */
+sf.handDistance = 80; sf.step(600);
+sf.step(3600);                           /* CLOSING            */
+check("lid is CLOSING", sf.lidState, "CLOSING");
+sf.wasteDistance = 1; sf.forceLevelSample(); sf.step(3650);   /* measured mid-close */
+check("bin went FULL mid-close", sf.binStatus, "FULL");
+sf.handDistance = 10; sf.step(3700);
+check("hand returns -> safety re-open wins over lockdown", sf.lidState, "OPENING");
+
 console.log("\n----------------------------------------");
 console.log("  " + pass + " passed, " + fail + " failed");
 console.log("----------------------------------------\n");

@@ -19,7 +19,9 @@
 <script src="assets/js/auth-config.js?v=28"></script>
 <script src="assets/js/users.js?v=28"></script>
 <script src="assets/js/auth.js?v=28"></script>
-<script>AUTH.requireAuth("login.html");</script>
+<!-- Collectors have their own page and must not land on the admin console. -->
+<script>AUTH.requireAuth("login.html", { allow: ["owner", "admin", "viewer"],
+                                        elsewhere: { collector: "collector.html" } });</script>
 
 <header class="site-header">
   <div class="container inner">
@@ -31,8 +33,10 @@
       <a href="#fleet">Fleet</a>
       <a href="#simulation">Simulation</a>
       <a href="#device">Live device</a>
+      <a href="collector.html">Collectors</a>
       <a href="users.html" id="usersLink" class="hidden">Users</a>
       <a href="index.html">Public site</a>
+      <span class="cloud-pill" id="cloudPill" data-state="local" title="Where this page's fleet data comes from">Local demo</span>
       <span class="who" id="whoBox">
         <img id="whoAvatar" class="who-avatar hidden" alt="">
         <span class="muted" id="whoami"></span>
@@ -52,7 +56,7 @@
     <div class="kpi is-ok"><div class="label">Normal</div><div class="value" id="kOk">-</div><div class="sub">under 75%</div></div>
     <div class="kpi is-warn"><div class="label">Near full</div><div class="value" id="kWarn">-</div><div class="sub">75-89%</div></div>
     <div class="kpi is-full"><div class="label">Collection due</div><div class="value" id="kFull">-</div><div class="sub">90% and above</div></div>
-    <div class="kpi"><div class="label">Offline</div><div class="value" id="kOffline">-</div><div class="sub">no telemetry</div></div>
+    <div class="kpi"><div class="label">Offline</div><div class="value" id="kOffline">-</div><div class="sub" id="kOfflineSub">no telemetry</div></div>
     <div class="kpi"><div class="label">Average fill</div><div class="value" id="kAvg">-</div><div class="sub">online bins</div></div>
   </div>
 
@@ -75,6 +79,8 @@
         <span><span class="badge badge-warning"><span class="dot"></span>Near full</span></span>
         <span><span class="badge badge-full"><span class="dot"></span>Full</span></span>
         <span><span class="badge badge-offline"><span class="dot"></span>Offline</span></span>
+        <span><span class="badge badge-error"><span class="dot"></span>Sensor fault</span></span>
+        <span><span class="badge-locked">LOCKED</span> full, refuses hands</span>
       </div>
     </div>
 
@@ -136,7 +142,9 @@
         <div class="row-tight">
           <button class="btn btn-sm" id="bulkMute">Mute every full bin</button>
           <button class="btn btn-sm" id="bulkRoute">Plan collection route</button>
-          <button class="btn btn-sm btn-danger" id="resetDemo">Reset demo data</button>
+          <a class="btn btn-sm" href="collector.html">Open collector module</a>
+          <button class="btn btn-sm btn-danger" id="resetDemo"
+                  title="Clears this browser's copy only - the shared cloud fleet is not touched">Reset local demo</button>
         </div>
         <div id="routeOut" class="muted" style="margin-top:.7rem"></div>
       </div>
@@ -162,6 +170,7 @@
           <option value="warning">Near full</option>
           <option value="full">Full</option>
           <option value="offline">Offline</option>
+          <option value="error">Sensor fault</option>
         </select>
       </div>
     </div>
@@ -247,6 +256,8 @@
             <div><div class="k">Red LED</div><div class="v" data-sim="red">OFF</div></div>
             <div><div class="k">Buzzer</div><div class="v" data-sim="buzzer">SILENT</div></div>
             <div><div class="k">Lid opens</div><div class="v" data-sim="opens">0</div></div>
+            <div><div class="k">Full lockdown</div><div class="v" data-sim="locked">no</div></div>
+            <div><div class="k">Turned away</div><div class="v" data-sim="refused">0</div></div>
           </div>
         </div>
       </div>
@@ -270,15 +281,17 @@
         <span class="muted">runs the real compiled firmware</span>
       </div>
       <p>
-        The panel above is a JavaScript twin. This one runs the actual AVR machine
-        code on a simulated ATmega328P with the real HC-SR04, servo, LEDs and LCD.
-        Paste your Wokwi project ID once and it is remembered in this browser.
+        The panel above is a JavaScript twin. This one runs the actual compiled
+        ESP32 firmware on a simulated ESP32 with the real HC-SR04s, servo, LEDs
+        and LCD - including Wi-Fi, so with cloud sync set up it reports into the
+        live fleet as BIN-001. Paste your Wokwi project ID once and it is
+        remembered in this browser.
       </p>
       <div class="row" style="margin-bottom:.9rem">
         <input type="text" id="wokwiId" class="grow-input"
                placeholder="Wokwi project ID, e.g. 123456789012345678">
         <button class="btn btn-primary" id="wokwiLoad">Load</button>
-        <a class="btn" href="https://wokwi.com/projects/new/arduino-uno" target="_blank" rel="noopener">
+        <a class="btn" href="https://wokwi.com/projects/new/esp32" target="_blank" rel="noopener">
           Create on Wokwi
         </a>
       </div>
@@ -297,28 +310,44 @@
   <!-- ======================================================= LIVE DEVICE -->
   <div class="card" id="device" style="margin-bottom:1rem">
     <div class="card-title">
-      <h3>📡 Connect a real device</h3>
-      <span class="muted">ESP32 firmware, option C</span>
+      <h3>📡 Live device</h3>
+      <span class="muted">ESP32 or Wokwi, reporting through the cloud</span>
     </div>
     <p>
-      Flash <code>arduino_code/05_esp32_wifi_version</code> to an ESP32 on the same
-      Wi-Fi network. It prints its IP address on the serial monitor. Paste that
-      address here and this dashboard reads
-      <code>/api/status</code> from the board itself instead of the demo data.
+      Flash <code>arduino_code/05_esp32_wifi_version</code> with a
+      <code>secrets.h</code> (copy <code>secrets.example.h</code>). The board signs in
+      to Firebase as its own device account, pushes its readings into the shared
+      fleet, and picks up the commands you send from this page. Because the
+      cloud sits in the middle, this works from anywhere - the dashboard and the
+      bin no longer have to be on the same Wi-Fi.
     </p>
-    <div class="row" style="margin-bottom:.8rem">
-      <input type="text" id="deviceIp" class="grow-input" placeholder="192.168.1.42">
-      <button class="btn btn-primary" id="deviceConnect">Connect</button>
-      <button class="btn" id="deviceStop">Stop</button>
+    <div id="deviceCloud" class="device-cloud">
+      <div class="muted">No device has reported yet.</div>
     </div>
-    <div id="deviceOut" class="console" style="height:130px">Not connected.</div>
+
+    <details class="device-direct">
+      <summary>Same Wi-Fi, no cloud (direct IP)</summary>
+      <p class="muted" style="margin:.6rem 0">
+        The board also serves <code>/api/status</code> on the local network. Browsers
+        block a plain <code>http://</code> request from an <code>https://</code> page
+        (mixed content), so this only works when you open the dashboard over
+        <code>http://localhost</code> - run <code>node server/server.js</code>.
+      </p>
+      <div class="row" style="margin-bottom:.8rem">
+        <input type="text" id="deviceIp" class="grow-input" placeholder="192.168.1.42"
+               aria-label="ESP32 IP address">
+        <button class="btn btn-primary" id="deviceConnect">Connect</button>
+        <button class="btn" id="deviceStop">Stop</button>
+      </div>
+      <div id="deviceOut" class="console" style="height:130px">Not connected.</div>
+    </details>
   </div>
 
 </main>
 
 <footer class="site-footer">
   <div class="container inner">
-    <div>Smart Dustbin admin console &middot; demo data stored in this browser</div>
+    <div>Smart Dustbin admin console &middot; <span id="footSource">demo data stored in this browser</span></div>
     <div>Signed in as <b id="footUser">-</b></div>
   </div>
 </footer>
@@ -330,6 +359,8 @@
 <script src="assets/js/map.js?v=28"></script>
 <script src="assets/js/sim.js?v=28"></script>
 <script src="assets/js/simulator.js?v=28"></script>
+<script src="assets/js/fleet-cloud.js?v=28"></script>
+<script src="assets/js/route.js?v=28"></script>
 <script src="assets/js/admin.js?v=28"></script>
 </body>
 </html>

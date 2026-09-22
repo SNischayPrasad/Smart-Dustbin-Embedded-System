@@ -173,6 +173,7 @@ function initSimulator(rootSelector, options) {
       "   Hand threshold : 25.0 cm",
       "   Warn / Full    : 75 % / 90 %",
       "   Uneven-load gap: 25 %",
+      "   Full lockdown  : ON (crew override: OPEN)",
       "==================================================",
       "Power-on self test ... outputs OK",
       "Sensor check: HAND OK | LEVEL-A OK | LEVEL-B OK"
@@ -200,6 +201,12 @@ function initSimulator(rootSelector, options) {
     setText("[data-sim=red]",     twin.ledRed   ? "ON" : "OFF");
     setText("[data-sim=buzzer]",  !twin.buzzerEnabled ? "MUTED" : (twin.buzzerOn ? "BEEP" : "SILENT"));
     setText("[data-sim=opens]",   twin.openCount);
+    setText("[data-sim=locked]",  twin.locked ? "LOCKED" : "no");
+    setText("[data-sim=refused]", twin.refusedCount);
+
+    /* Colour the lockdown readout so a locked bin is obvious at a glance. */
+    const lockEl = $("[data-sim=locked]");
+    if (lockEl) lockEl.classList.toggle("v-alert", twin.locked);
 
     if (consoleEl && now - lastTelemetry >= 2000) {
       lastTelemetry = now;

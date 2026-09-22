@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Collector - Smart Dustbin</title>
+  <meta name="description" content="Collection crew route planner for the Smart Dustbin city fleet.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="assets/css/style.css?v=28">
+</head>
+<body class="crew-page">
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="container inner">
+    <a class="brand" href="collector.html">
+      <span class="logo" aria-hidden="true">🚛</span>
+      <span>Smart Dustbin<small>Collection Crew</small></span>
+    </a>
+    <nav class="nav" aria-label="Crew">
+      <a href="#route" class="crew-only hidden">Route</a>
+      <a href="#stops" class="crew-only hidden">Stops</a>
+      <a href="admin.html" id="dashLink" class="hidden">Dashboard</a>
+      <a href="index.html">Public site</a>
+      <span class="who crew-only hidden"><span class="muted" id="whoami"></span></span>
+      <button type="button" class="btn btn-sm crew-only hidden" id="logoutBtn">Sign out</button>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ======================================================= CREW SIGN-IN -->
+  <section id="signinView" class="login-page crew-signin hidden" aria-labelledby="signinTitle">
+    <div class="login-card card">
+
+      <div class="logo-big" aria-hidden="true">🚛</div>
+      <h2 id="signinTitle" style="text-align:center;margin-bottom:.25rem">Crew sign-in</h2>
+      <p style="text-align:center;font-size:.9rem;margin-bottom:1.5rem">
+        Smart Dustbin &middot; Collection route
+      </p>
+
+      <div id="setupBox" class="demo-banner crew-setup hidden" role="note">
+        <b>Crew sign-in is not set up yet.</b>
+        The owner has three steps to do once:
+        <ol>
+          <li>Firebase console &gt; Authentication &gt; Sign-in method &gt;
+              enable <b>Email/Password</b>.</li>
+          <li>Authentication &gt; Users &gt; Add user: the crew address from
+              <code>COLLECTOR_EMAIL</code> in <code>firebase-config.js</code>,
+              with the crew password. Tell the crew the password in person
+              &mdash; never commit it.</li>
+          <li>Sign in here once, then send the <b>UID</b> this page shows to the
+              owner, who adds it to <code>COLLECTOR_UIDS</code> and to
+              <code>firestore.rules</code>.</li>
+        </ol>
+        <span id="setupReason"></span>
+      </div>
+
+      <div id="signinError" class="login-error" role="alert" aria-live="assertive"></div>
+
+      <form id="crewForm" novalidate>
+        <label class="field">
+          <span>Your name</span>
+          <input type="text" id="crewName" name="crewName" maxlength="40"
+                 autocomplete="name" placeholder="e.g. Ravi" required
+                 aria-describedby="crewNameHint">
+        </label>
+        <p class="field-hint" id="crewNameHint">
+          Shown in the activity log next to what you do, as &ldquo;Crew - Ravi&rdquo;.
+        </p>
+
+        <label class="field">
+          <span>Crew password</span>
+          <input type="password" id="crewPassword" name="crewPassword"
+                 autocomplete="current-password" required>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-block" id="crewBtn">
+          Sign in
+        </button>
+      </form>
+
+      <div class="hint">
+        The crew password is checked by Google&rsquo;s servers (Firebase
+        Authentication). This site never stores it.<br>
+        Staff with a Google account can
+        <a href="login.html">sign in on the admin login</a> and come back here.
+      </div>
+
+      <p style="text-align:center;margin:1.2rem 0 0;font-size:.86rem">
+        <a href="index.html">&larr; Back to the public site</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ THE APP -->
+  <div id="appView" class="container crew-app hidden">
+
+    <div class="crew-head">
+      <div>
+        <h2>Collection route</h2>
+        <p class="muted" id="crewWho"></p>
+      </div>
+      <span class="cloud-pill" id="cloudPill" data-state="local"
+            role="status" aria-live="polite">Local demo - not shared</span>
+    </div>
+
+    <div id="setupNotice" class="readonly-banner hidden" role="status"></div>
+    <div id="fatalNotice" class="readonly-banner hidden" role="alert"></div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid crew-kpis">
+      <div class="kpi is-full"><div class="label">Due now</div><div class="value" id="kDue">-</div><div class="sub" id="kDueSub">90% and above</div></div>
+      <div class="kpi is-warn"><div class="label">Near full</div><div class="value" id="kNear">-</div><div class="sub">75-89%</div></div>
+      <div class="kpi is-info"><div class="label">Stops</div><div class="value" id="kStops">-</div><div class="sub" id="kStopsSub">not planned yet</div></div>
+      <div class="kpi"><div class="label">Est. km</div><div class="value" id="kKm">-</div><div class="sub">by road, approx.</div></div>
+      <div class="kpi"><div class="label">Est. minutes</div><div class="value" id="kMin">-</div><div class="sub">22 km/h + 4 min a stop</div></div>
+      <div class="kpi"><div class="label">Load</div><div class="value" id="kLoad">-</div><div class="sub" id="kLoadSub">litres</div></div>
+    </div>
+
+    <div class="crew-layout">
+
+      <!-- map -->
+      <section id="route" class="card crew-map-card" aria-labelledby="routeTitle">
+        <div class="card-title">
+          <h3 id="routeTitle">Route map</h3>
+          <button type="button" class="btn btn-sm" id="fitBtn">Fit route</button>
+        </div>
+        <div class="map-wrap crew-map-wrap">
+          <div id="crewMap" role="region" aria-label="Map of the planned stops"></div>
+        </div>
+        <p class="map-caption">
+          Straight-line preview; Google Maps plans the roads.
+        </p>
+      </section>
+
+      <div class="crew-side">
+
+        <!-- planning controls -->
+        <section class="card" aria-labelledby="planTitle">
+          <div class="card-title"><h3 id="planTitle">Plan</h3></div>
+          <form id="planForm" novalidate>
+            <details class="crew-options" id="planOptions">
+              <summary>Route options</summary>
+              <div class="crew-controls">
+                <label class="field">
+                  <span>Start from</span>
+                  <select id="startMode">
+                    <option value="depot">Depot - GHMC Head Office</option>
+                    <option value="me">My location</option>
+                    <option value="first">The fullest bin (first stop)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Zone</span>
+                  <select id="zoneSel">
+                    <option value="">All zones</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Truck capacity (litres)</span>
+                  <input type="number" id="truckCap" min="100" max="50000" step="100"
+                         value="4000" inputmode="numeric">
+                </label>
+                <label class="field">
+                  <span>Stops per Google Maps link</span>
+                  <select id="perLink">
+                    <option value="9">9 - Google Maps app or a computer</option>
+                    <option value="3">3 - phone browser without the app</option>
+                  </select>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="incNear" checked>
+                  <span>Include near-full bins (75% and above)</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="incOffline">
+                  <span>Include offline and faulty bins (to inspect)</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="returnStart" checked>
+                  <span>Return to the start at the end</span>
+                </label>
+              </div>
+            </details>
+            <button type="submit" class="btn btn-primary btn-block" id="planBtn">
+              Plan route
+            </button>
+          </form>
+          <p class="muted crew-plan-note" id="planNote" aria-live="polite"></p>
+        </section>
+
+        <!-- Google Maps legs -->
+        <section class="card" id="legsCard" aria-labelledby="legsTitle">
+          <div class="card-title"><h3 id="legsTitle">Navigate</h3></div>
+          <div id="legList" class="leg-list">
+            <p class="muted">Plan a route to get Google Maps links.</p>
+          </div>
+          <label class="check-row">
+            <input type="checkbox" id="withOrigin">
+            <span>Links start at the planned start (for planning on a computer)</span>
+          </label>
+        </section>
+      </div>
+    </div>
+
+    <!-- ordered stops -->
+    <section id="stops" class="card" aria-labelledby="stopsTitle">
+      <div class="card-title">
+        <h3 id="stopsTitle">Stops</h3>
+        <span class="muted" id="stopsCount"></span>
+      </div>
+      <ol id="stopList" class="stop-list" role="list"></ol>
+      <div id="deferredBox"></div>
+    </section>
+  </div>
+
+</main>
+
+<footer class="site-footer crew-only hidden">
+  <div class="container inner">
+    <div>Smart Dustbin &middot; collection crew</div>
+    <div>Signed in as <b id="footUser">-</b></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="assets/js/firebase-config.js?v=28"></script>
+<script src="assets/js/auth-config.js?v=28"></script>
+<script src="assets/js/users.js?v=28"></script>
+<script src="assets/js/auth.js?v=28"></script>
+<script src="assets/js/data.js?v=28"></script>
+<script src="assets/js/fleet-cloud.js?v=28"></script>
+<script src="assets/js/route.js?v=28"></script>
+<script src="assets/js/collector.js?v=28"></script>
+</body>
+</html>

@@ -41,7 +41,8 @@ const USER_DB = {
       canBulkAct:     true,
       canPlanRoute:   true,
       canResetDemo:   true,
-      canManageUsers: true      /* the only role that may open users.html */
+      canManageUsers: true,     /* the only role that may open users.html */
+      canCollect:     true
     },
     admin: {
       label: "Administrator",
@@ -50,7 +51,24 @@ const USER_DB = {
       canBulkAct:     true,     /* fleet-wide commands, e.g. mute all    */
       canPlanRoute:   true,     /* compute a collection route            */
       canResetDemo:   true,
-      canManageUsers: false     /* administrators cannot grant access     */
+      canManageUsers: false,    /* administrators cannot grant access     */
+      canCollect:     true      /* may use the crew page (collector.html) */
+    },
+    /* The collection crew. They sign in on collector.html with the shared
+       crew password (a real Firebase email/password account, so Google
+       checks it and the Firestore rules can recognise the crew's UID).
+       They work the route - open a full bin's lid, mark it emptied - but
+       cannot run the fleet: no remote control of arbitrary bins, no bulk
+       commands, no access management. */
+    collector: {
+      label: "Collector",
+      description: "Sees the collection route and marks bins as emptied",
+      canControlBins: false,
+      canBulkAct:     false,
+      canPlanRoute:   true,
+      canResetDemo:   false,
+      canManageUsers: false,
+      canCollect:     true      /* open a lid on the route + mark collected */
     },
     viewer: {
       label: "Viewer",
@@ -61,7 +79,8 @@ const USER_DB = {
          may do it - it is the most interesting thing to show a visitor. */
       canPlanRoute:   true,
       canResetDemo:   false,
-      canManageUsers: false
+      canManageUsers: false,
+      canCollect:     false
     }
   },
 

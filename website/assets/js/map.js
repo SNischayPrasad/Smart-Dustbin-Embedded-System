@@ -52,10 +52,14 @@ function BinMap(containerId, options) {
   /* ------------------------------------------------------------------ */
   /*  Marker helpers                                                     */
   /* ------------------------------------------------------------------ */
+  /* A locked (full) bin gets a small padlock on its pin, so the map answers
+     "which bins are refusing people right now" without opening anything. */
   function markerHtml(bin, status) {
     const shortId = bin.id.replace("BIN-", "");
-    const sel = bin.id === selectedId ? " selected" : "";
-    return '<div class="bin-marker m-' + status + sel + '"><span>' + shortId + '</span></div>';
+    const sel  = bin.id === selectedId ? " selected" : "";
+    const lock = bin.locked ? " locked" : "";
+    const live = bin.source === "device" ? " live" : "";
+    return '<div class="bin-marker m-' + status + sel + lock + live + '"><span>' + shortId + '</span></div>';
   }
 
   function popupHtml(bin, status) {
@@ -63,8 +67,10 @@ function BinMap(containerId, options) {
            '<span class="muted">' + escapeHtml(bin.id) + ' &middot; ' +
            escapeHtml(bin.zone) + '</span><br>' +
            'Fill: <b>' + Math.round(bin.fill) + '%</b> &middot; ' +
-           'Lid: <b>' + bin.lid + '</b><br>' +
-           'Status: <b>' + SD.statusLabel(status) + '</b>';
+           'Lid: <b>' + escapeHtml(bin.lid) + '</b>' +
+           (bin.locked ? ' <span class="badge-locked">LOCKED</span>' : '') + '<br>' +
+           'Status: <b>' + SD.statusLabel(status) + '</b>' +
+           (bin.source === "device" ? '<br><span class="muted">Live device - real telemetry</span>' : '');
   }
 
   /* ------------------------------------------------------------------ */

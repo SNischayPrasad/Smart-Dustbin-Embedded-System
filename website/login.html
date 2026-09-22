@@ -67,6 +67,7 @@
     </div>
 
     <p style="text-align:center;margin:1.2rem 0 0;font-size:.86rem">
+      Collection crew? <a href="collector.html">Crew sign-in &rarr;</a><br>
       <a href="index.html">&larr; Back to the public site</a>
     </p>
   </div>
@@ -83,8 +84,11 @@
 <script src="assets/js/auth.js?v=28"></script>
 <script src="assets/js/oauth.js?v=28"></script>
 <script>
-  /* Already signed in? Skip the form. */
-  if (AUTH.isLoggedIn()) window.location.replace("admin.html");
+  /* Already signed in? Skip the form - and send the crew to their own page. */
+  if (AUTH.isLoggedIn()) {
+    const s = AUTH.currentSession();
+    window.location.replace(s && s.role === "collector" ? "collector.html" : "admin.html");
+  }
 
   const form    = document.getElementById("loginForm");
   const errBox  = document.getElementById("loginError");

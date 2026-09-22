@@ -137,6 +137,29 @@ const REAL_USERS = USER_DB.USERS.slice();
   check("the rest are administrators",
         REAL_USERS.filter(u => u.role === "admin").length === 4);
 
+  console.log("\nThe collection crew works the route, and nothing more");
+  const crew = Users.permissions("collector");
+  check("collector is a real role, not the viewer fallback", crew === USER_DB.ROLES.collector);
+  check("collector label",                   Users.roleLabel("collector") === "Collector");
+  check("collector cannot control bins",     crew.canControlBins === false);
+  check("collector cannot bulk act",         crew.canBulkAct === false);
+  check("collector cannot reset the demo",   crew.canResetDemo === false);
+  check("collector cannot manage users",     crew.canManageUsers === false);
+  check("collector MAY plan a route",        crew.canPlanRoute === true);
+  check("collector MAY collect",             crew.canCollect === true);
+  check("owner and admin may collect",
+        Users.can("owner", "canCollect") && Users.can("admin", "canCollect"));
+  check("viewer (the public demo login) may NOT collect", Users.can("viewer", "canCollect") === false);
+  check("an unknown role may NOT collect",   Users.can("wizard", "canCollect") === false);
+  check("collectors do not count as administrators", Users.adminCount() === 6);
+  check("nobody in the registry is a collector (the crew uses the shared password)",
+        REAL_USERS.every(u => u.role !== "collector"));
+  const CAPS = ["canControlBins", "canBulkAct", "canPlanRoute", "canResetDemo",
+                "canManageUsers", "canCollect"];
+  check("every role spells out every capability as true/false",
+        Object.keys(USER_DB.ROLES).every(r =>
+          CAPS.every(c => typeof USER_DB.ROLES[r][c] === "boolean")));
+
   console.log("\nStrict mode is on");
   check("unknown accounts are denied, not admitted read-only",
         USER_DB.DEFAULT_ROLE_FOR_UNKNOWN === "deny");

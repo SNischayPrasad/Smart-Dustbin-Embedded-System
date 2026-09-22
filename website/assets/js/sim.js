@@ -14,6 +14,16 @@
 
    If you change a threshold in the .ino file, change it here too - the whole
    point is that the two agree.
+
+   FULL-BIN LOCKDOWN
+   A bin at FULL refuses to open for a hand. Letting one more person push
+   rubbish into a full bin is exactly how bins overflow onto the street, so
+   the lid stays shut, the red LED stays on, and each refused approach is
+   counted. Two things still open it:
+     - the safety re-open (a hand returning while the lid comes down), because
+       a lid must never close on somebody's hand, and
+     - the operator's OPEN command - the crew override used to empty it.
+   Emptying the bin drops it below FULL, which releases the lock.
    ========================================================================== */
 
 function FirmwareTwin(options) {
@@ -60,6 +70,8 @@ function FirmwareTwin(options) {
   this.ledGreen      = false;
   this.ledRed        = false;
   this.manualOverride= false;
+  this.locked        = false;   /* FULL, so a hand will not open the lid  */
+  this.refusedCount  = 0;       /* approaches turned away while locked   */
 
   let stateEnteredAt = 0;
   let lastSeenHandAt = -99999;
@@ -67,6 +79,7 @@ function FirmwareTwin(options) {
   let buzzerChanged  = 0;
   let blinkChanged   = 0;
   let blinkOn        = false;
+  let refusalLatched = false;   /* one refusal per approach, not per poll */
 
   this.onSerial = cfg.onSerial || function () {};
 
@@ -118,14 +131,28 @@ function FirmwareTwin(options) {
     return false;
   }
 
+  /* ---- binLocked() - the whole lockdown policy is this one line -------
+     SENSOR_ERROR deliberately does not lock: when the level is unknown,
+     stranding every user would be worse than an occasional overfill.    */
+  function binLocked() { return self.binStatus === "FULL"; }
+
   /* ---- updateLidStateMachine() --------------------------------------- */
   function updateLid(handDetected, now) {
     if (handDetected) lastSeenHandAt = now;
+    else              refusalLatched = false;   /* hand gone: next approach counts */
 
     switch (self.lidState) {
 
       case "CLOSED":
-        if (handDetected) {
+        if (handDetected && binLocked()) {
+          /* The sensor polls every 60 ms, so without the latch one person
+             standing there would be counted - and printed - 16 times a second. */
+          if (!refusalLatched) {
+            refusalLatched = true;
+            self.refusedCount++;
+            self.onSerial("### Bin FULL - lid locked until it is emptied", "warn");
+          }
+        } else if (handDetected) {
           self.openCount++;
           enterState("OPENING", now);
           self.onSerial(">>> Hand detected - opening lid", "in");
@@ -144,6 +171,8 @@ function FirmwareTwin(options) {
         break;
 
       case "CLOSING":
+        /* Safety beats lockdown: even if the bin turned FULL while the lid
+           was coming down, a returning hand re-opens it. */
         if (handDetected) {                       /* safety re-open */
           enterState("OPENING", now);
           self.onSerial("!!! Hand returned - re-opening", "warn");
@@ -228,6 +257,7 @@ function FirmwareTwin(options) {
 
     updateLevel(now);
     updateAlerts(now);
+    self.locked = binLocked();
     return self;
   };
 
@@ -235,7 +265,9 @@ function FirmwareTwin(options) {
   this.command = function (cmd) {
     switch (String(cmd).toUpperCase()) {
       case "OPEN":
-        self.manualOverride = true; self.lidState = "OPEN";   return "ACK: lid forced OPEN";
+        self.manualOverride = true; self.lidState = "OPEN";
+        return binLocked() ? "ACK: lid forced OPEN (crew override - bin is FULL)"
+                           : "ACK: lid forced OPEN";
       case "CLOSE":
         self.manualOverride = true; self.lidState = "CLOSED"; return "ACK: lid forced CLOSED";
       case "AUTO":
@@ -249,6 +281,7 @@ function FirmwareTwin(options) {
         self.fillPercent = 0; self.fillA = 0; self.fillB = 0;
         self.fillSpread = 0; self.unevenLoad = false;
         self.binStatus = "OK"; self.openCount = 0;
+        self.refusedCount = 0; self.locked = false;
         return "ACK: bin marked as collected, counters reset";
       case "STATUS":
         return self.telemetryLine();
@@ -270,6 +303,7 @@ function FirmwareTwin(options) {
            " | Fill=" + Math.round(self.fillPercent) + "%" +
            " | Status=" + self.binStatus +
            " | Opens=" + self.openCount +
+           (self.locked ? " | LOCKED" : "") +
            (self.unevenLoad ? " | UNEVEN LOAD" : "") +
            (self.validSensors === 1 ? " | DEGRADED 1 SENSOR" : "") +
            "\n        " + bar;
@@ -286,7 +320,9 @@ function FirmwareTwin(options) {
       sensors: self.validSensors,
       lid:     self.lidState,
       status:  self.binStatus,
+      locked:  self.locked,
       opens:   self.openCount,
+      refused: self.refusedCount,
       errors:  self.errorCount
     });
   };
@@ -352,7 +388,16 @@ function DustbinView(container) {
         '<path d="M108 159 h4 l5 -4 v14 l-5 -4 h-4 z" fill="#ff9500"/>',
         '<path d="M119 160 q3 3.5 0 7" fill="none" stroke="#ff9500" stroke-width="1.4"/>',
       '</g>',
+      /* White padlock on the bin front. White because it only ever shows on
+         top of the red FULL waste colour. */
+      '<g id="lockIcon" opacity="0">',
+        '<path d="M89.5 124 v-4.5 a5.5 5.5 0 0 1 11 0 v4.5" fill="none" stroke="#ffffff" stroke-width="2.2"/>',
+        '<rect x="86" y="123.5" width="18" height="14" rx="2.5" fill="#ffffff"/>',
+        '<circle cx="95" cy="129" r="2" fill="#d70015"/>',
+        '<rect x="94.2" y="129.5" width="1.6" height="4" rx=".8" fill="#d70015"/>',
+      '</g>',
       '<text x="95" y="192" text-anchor="middle" font-size="8" fill="#86868b" id="binLabel">BIN-001</text>',
+      '<text x="95" y="19" text-anchor="middle" font-size="8" font-weight="700" fill="#ff3b30" id="lockTag" opacity="0">LOCKED - FULL</text>',
       '<text x="95" y="30" text-anchor="middle" font-size="8" font-weight="700" fill="#ff9500" id="unevenTag" opacity="0">UNEVEN LOAD</text>',
     '</svg>'
   ].join("");
@@ -365,7 +410,9 @@ function DustbinView(container) {
     buzzer: container.querySelector("#buzzerIcon"),
     sonar:  container.querySelector("#sonarWave"),
     label:  container.querySelector("#binLabel"),
-    uneven: container.querySelector("#unevenTag")
+    uneven: container.querySelector("#unevenTag"),
+    lock:   container.querySelector("#lockIcon"),
+    lockTag:container.querySelector("#lockTag")
   };
 
   const TOP = 64, BOTTOM = 198;   /* inner top and bottom of the bin, SVG units */
@@ -393,6 +440,10 @@ function DustbinView(container) {
       twin.binStatus === "WARNING" ? "#ff9500" : "url(#wasteGrad)");
 
     el.uneven.setAttribute("opacity", twin.unevenLoad ? "1" : "0");
+
+    /* full-bin lockdown */
+    el.lock.setAttribute("opacity",    twin.locked ? "1" : "0");
+    el.lockTag.setAttribute("opacity", twin.locked ? "1" : "0");
 
     /* indicator LEDs */
     el.green.setAttribute("class", "led-lamp " + (twin.ledGreen ? "led-on-green" : "led-off"));

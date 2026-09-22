@@ -63,6 +63,29 @@ const AUTH = (function () {
     return remaining > 0 ? remaining : 0;
   }
 
+  /* Record one wrong password. Shared by the demo login below and the crew
+     sign-in on collector.html, so both pages draw on the same five tries -
+     a guesser cannot get ten by switching tabs.
+     Returns { locked, left, seconds }: locked = this failure used up the
+     last try; left = tries remaining; seconds = length of the lock.      */
+  function noteFailure() {
+    const s = lockState();
+    s.fails += 1;
+    if (s.fails >= MAX_ATTEMPTS) {
+      s.until = Date.now() + LOCK_MINS * 60000;
+      s.fails = 0;
+      saveLock(s);
+      return { locked: true, left: 0, seconds: LOCK_MINS * 60 };
+    }
+    saveLock(s);
+    return { locked: false, left: MAX_ATTEMPTS - s.fails, seconds: 0 };
+  }
+
+  /* A successful sign-in wipes the slate. */
+  function clearFailures() {
+    saveLock({ fails: 0, until: 0 });
+  }
+
   /* ---- Login --------------------------------------------------------- */
   function login(username, password) {
     const wait = lockedForSeconds();
@@ -73,20 +96,14 @@ const AUTH = (function () {
     const user = USERS.find(u => u.username === username && u.password === password);
 
     if (!user) {
-      const s = lockState();
-      s.fails += 1;
-      if (s.fails >= MAX_ATTEMPTS) {
-        s.until = Date.now() + LOCK_MINS * 60000;
-        s.fails = 0;
-        saveLock(s);
+      const f = noteFailure();
+      if (f.locked) {
         return { ok: false, message: "Too many failed attempts. Locked for " + LOCK_MINS + " minute." };
       }
-      saveLock(s);
-      const left = MAX_ATTEMPTS - s.fails;
-      return { ok: false, message: "Invalid username or password. " + left + " attempt(s) left." };
+      return { ok: false, message: "Invalid username or password. " + f.left + " attempt(s) left." };
     }
 
-    saveLock({ fails: 0, until: 0 });
+    clearFailures();
 
     const demoRole = (typeof USER_DB !== "undefined" && USER_DB.DEMO_LOGIN_ROLE)
                      ? USER_DB.DEMO_LOGIN_ROLE : "viewer";
@@ -139,14 +156,35 @@ const AUTH = (function () {
   }
 
   /* ---- Route guard ---------------------------------------------------
-     Called at the very top of admin.html. If there is no valid session
-     the browser is sent to the login page before anything renders.     */
-  function requireAuth(loginUrl) {
-    if (!isLoggedIn()) {
+     Called at the very top of a protected page. If there is no valid
+     session the browser is sent to the login page before anything renders.
+
+     opts (optional) narrows WHICH roles the page is for:
+       allow:     ["owner", "admin", "viewer"]   roles that may stay
+       elsewhere: { collector: "collector.html" } where other roles belong
+     e.g. admin.html sends a crew session to the crew page instead of
+     showing it a console it has no use for. A role that is neither allowed
+     nor sent elsewhere is signed out and sent to the login page - failing
+     closed, and without the redirect loop that bouncing a still-signed-in
+     user to login.html (which forwards signed-in users on) would cause.
+     No opts = the old behaviour: any signed-in role may stay.           */
+  function requireAuth(loginUrl, opts) {
+    const s = currentSession();
+    if (!s) {
       window.location.replace(loginUrl || "login.html");
       return false;
     }
-    return true;
+    if (!opts || !Array.isArray(opts.allow)) return true;
+    if (opts.allow.indexOf(s.role) !== -1) return true;
+
+    const target = opts.elsewhere && opts.elsewhere[s.role];
+    if (target) {
+      window.location.replace(target);
+      return false;
+    }
+    logout();
+    window.location.replace(loginUrl || "login.html");
+    return false;
   }
 
   return {
@@ -156,6 +194,10 @@ const AUTH = (function () {
     isLoggedIn: isLoggedIn,
     currentSession: currentSession,
     requireAuth: requireAuth,
-    lockedForSeconds: lockedForSeconds
+    lockedForSeconds: lockedForSeconds,
+    noteFailure: noteFailure,
+    clearFailures: clearFailures,
+    MAX_ATTEMPTS: MAX_ATTEMPTS,
+    LOCK_MINS: LOCK_MINS
   };
 })();
