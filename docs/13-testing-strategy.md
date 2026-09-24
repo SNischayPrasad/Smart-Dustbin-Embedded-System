@@ -4,11 +4,12 @@ Testing an embedded system means three different activities, and it is worth
 naming them separately in a viva:
 
 1. **Unit testing** - does the maths give the right answer?
-   Automated: `node tests/twin.test.js` (64 assertions).
+   Automated: `node tests/twin.test.js` (88 assertions).
 2. **Integration testing** - do the subsystems work together?
-   The 14 manual cases below.
+   The 26 manual cases below.
 3. **Fault injection** - what happens when something breaks?
-   Cases 12 to 14, which are the ones examiners actually ask about.
+   Cases 12, 13, 17, 18, 22 and 26, which are the ones examiners actually
+   ask about.
 
 ---
 
@@ -21,9 +22,16 @@ node tests/twin.test.js
 Covers the fill formula at every documented point, the clamping behaviour, the
 three status bands and their boundaries, all four lid state transitions
 including the mid-close safety re-open, the 25 cm detection boundary, the
-skip-while-open rule, and the full command set.
+skip-while-open rule, the full command set, and the full-bin lockdown - the
+refusal latch, the crew override, the release paths, and the rule that a
+sensor fault does not lock.
 
-Expected result: **64 passed, 0 failed.**
+Expected result: **88 passed, 0 failed.**
+
+These run against `website/assets/js/sim.js`, the JavaScript twin of the
+firmware. They cannot compile the `.ino`, so they prove the *logic* is right,
+not that the board behaves - which is exactly why the manual cases below
+exist.
 
 ---
 
@@ -208,6 +216,80 @@ Record the actual result for each one in `data/test_results.csv`.
 
 ---
 
+## Full-bin lockdown (TC-20 to TC-26)
+
+These are the cases for the bug fixed in this revision: a FULL bin used to
+open its lid anyway. Run them on the bench with the level sensors set by hand,
+or in Wokwi by dragging the sensor sliders - the behaviour is identical.
+
+### TC-20 - A full bin refuses a hand
+
+| | |
+|---|---|
+| **Input** | Both level sensors to 3 cm (`Status=FULL`), then bring a hand to 10 cm of the front sensor |
+| **Expected** | The lid **does not move**. Serial prints `### Bin FULL - lid locked until it is emptied` **once**. Telemetry gains ` \| LOCKED`, JSON shows `"locked":true,"refused":1`. Red LED stays solid. |
+| **Pass** | The servo does not twitch, and `refused` increments by exactly 1 |
+| **Fail** | The lid opens - the lockdown is not wired in - or `Opens` increments, which means the refusal is going down the open path |
+| **Note** | This is the headline case for this feature. A bin that accepts three more bags after reporting FULL is how rubbish ends up on the pavement. |
+
+### TC-21 - One approach is one refusal (the latch)
+
+| | |
+|---|---|
+| **Input** | With the bin FULL, hold a hand at 10 cm for 10 seconds, remove it for 2 s, then present it again |
+| **Expected** | `refused` goes 0 -> 1 during the first 10 s and **stays at 1**; the message prints once. On the second approach it becomes 2. |
+| **Pass** | `refused` == 2 after two approaches, not 160 |
+| **Fail** | The counter climbing continuously - the hand sensor polls every 60 ms, so a missing latch counts about 16 times a second and floods the serial monitor |
+
+### TC-22 - Safety beats lockdown (fault injection)
+
+| | |
+|---|---|
+| **Input** | Start with an OK bin. Wave a hand so the lid opens, remove it, and **while the lid is closing** (the 400 ms `CLOSING` window) drop both level sensors to 3 cm and put the hand back |
+| **Expected** | `!!! Hand returned - re-opening` - the lid re-opens **even though the bin is now FULL** |
+| **Pass** | The lid re-opens every time; it then closes and locks normally once the hand is gone |
+| **Fail** | The lid continues closing onto the hand. A lid must never close on somebody's hand, whatever the fill level says - there is deliberately no lock test in the `LID_CLOSING` branch |
+| **Note** | The easiest way to hit the timing is to set both level sensors to 3 cm *first*, then wave: the bin is already FULL, but the lid is only locked at `CLOSED`, so the open cycle still completes. |
+
+### TC-23 - Crew override
+
+| | |
+|---|---|
+| **Input** | With the bin locked, type `OPEN` at the serial monitor (or open `/api/command?cmd=OPEN` on the ESP32) |
+| **Expected** | The lid opens and the reply names the override: `ACK: lid forced OPEN (crew override - bin is FULL)` on the UNO, `lid forced open (crew override - bin FULL)` from the ESP32 |
+| **Pass** | The lid opens and the wording says "crew override", so nobody reads it as the lockdown having failed |
+| **Fail** | The command is refused - the crew could not empty the bin - or the reply is the ordinary one, which hides the fact that a lock was overridden |
+
+### TC-24 - Re-locking after AUTO
+
+| | |
+|---|---|
+| **Input** | Continue from TC-23. Type `AUTO`, keep the bin full, wait for the lid to close, then present a hand |
+| **Expected** | The lid closes normally (3 s hold + 400 ms travel), and the next hand is refused again with the counter incrementing |
+| **Pass** | The bin re-locks by itself once the lid reaches `CLOSED` - no command needed |
+| **Fail** | The bin stays unlocked after the override, which would leave a full bin open to everyone until it is emptied |
+
+### TC-25 - Emptying releases the lock
+
+| | |
+|---|---|
+| **Input** | With the bin locked and `refused` > 0, type `EMPTY`. Then repeat the test by raising both level sensors above 3 cm instead of sending the command. |
+| **Expected** | Both routes clear it: `Status=OK`, `locked` false, ` \| LOCKED` disappears, and `EMPTY` also resets `refused` to 0. A hand opens the lid again. |
+| **Pass** | The lid opens on the next hand in **both** cases |
+| **Fail** | The bin stays locked after a real emptying - a crew that empties it without sending the command must not be punished for it. Nothing stores a lock flag; `binLocked()` is computed from the status every time, so there is nothing that can get stuck. |
+
+### TC-26 - A sensor fault does NOT lock (the deliberate exception)
+
+| | |
+|---|---|
+| **Input** | Unplug **both** level ECHO wires so `Status=SENSOR_ERROR`, then present a hand |
+| **Expected** | The lid **opens normally**. `locked` is false and no refusal is printed, even though the fill level is unknown. |
+| **Pass** | The bin stays usable while blind |
+| **Fail** | The lid refuses - the lock is keyed to "not OK" instead of to FULL |
+| **Note** | **Fail usable, not fail shut.** With both sensors dead the bin has no idea how full it is; stranding every user on a guess is worse than an occasional overfill. Being able to justify this choice is worth more in a viva than the feature itself. |
+
+---
+
 ## Boundary value table
 
 Boundaries are where bugs live. Test the value on each side, not just the middle.
@@ -217,6 +299,7 @@ Boundaries are where bugs live. Test the value on each side, not just the middle
 | Hand detection (25 cm) | 24.9 cm - opens | 25.0 cm - opens | 25.1 cm - stays closed |
 | Warning (75 %) | 74 % - OK | 75 % - WARNING | 76 % - WARNING |
 | Full (90 %) | 89 % - WARNING | 90 % - FULL | 91 % - FULL |
+| Lockdown (90 %) | 89 % - lid opens | 90 % - lid refuses | 91 % - lid refuses |
 | Dead zone (2 cm) | 1.9 cm - rejected | 2.0 cm - accepted | 2.1 cm - accepted |
 | Max range (400 cm) | 399 cm - accepted | 400 cm - accepted | 401 cm - rejected |
 | Uneven flag (25 pts) | 24 pts - no flag | 25 pts - no flag | 26 pts - flag raised |
@@ -257,18 +340,24 @@ one - including any failures you found and then fixed - is worth a great deal.
 
 Do not say "I tested it and it worked". Say:
 
-> "I have three layers. Sixty-four automated assertions cover the fill
-> formula, the sensor fusion and every state transition - I can run them right
-> now with `node tests/twin.test.js`. Nineteen integration cases cover the
-> hardware behaviour, and the results are committed in
-> `data/test_results.csv`. Four of those are fault injection: unplug one level
-> sensor and the bin degrades to running on the other and says so; unplug both
-> and it reports SENSOR_ERROR rather than publishing a wrong number. Test case
-> 16 is the one I would point at - with rubbish piled under one sensor, a
-> single-sensor bin reports 88 % and dispatches a van to a half-empty bin,
-> while the fused reading is 51 % plus an uneven-load flag. Test case 13 also
-> documents a limitation I did **not** fix: the servo is open-loop, so the
-> firmware cannot detect a jammed lid. Closing that would need a limit switch."
+> "I have three layers. Eighty-eight automated assertions cover the fill
+> formula, the sensor fusion, every state transition and the full-bin
+> lockdown - I can run them right now with `node tests/twin.test.js`.
+> Twenty-six integration cases cover the hardware behaviour, and the results
+> are committed in `data/test_results.csv`. Six of those are fault injection:
+> unplug one level sensor and the bin degrades to running on the other and
+> says so; unplug both and it reports SENSOR_ERROR rather than publishing a
+> wrong number. Test case 16 is the one I would point at - with rubbish piled
+> under one sensor, a single-sensor bin reports 88 % and dispatches a van to a
+> half-empty bin, while the fused reading is 51 % plus an uneven-load flag.
+> Test case 22 is the one I am proudest of: a full bin refuses to open, but if
+> the bin goes full while the lid is already coming down and a hand returns,
+> the lid still re-opens - safety beats lockdown. And case 26 is a decision
+> rather than a bug: a bin whose level sensors have both failed does **not**
+> lock, because stranding every user on a guess is worse than an occasional
+> overfill. Test case 13 also documents a limitation I did **not** fix: the
+> servo is open-loop, so the firmware cannot detect a jammed lid. Closing that
+> would need a limit switch."
 
 That answer demonstrates method, evidence and self-awareness in three
 sentences.

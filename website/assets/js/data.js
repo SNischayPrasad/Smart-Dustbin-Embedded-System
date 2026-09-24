@@ -218,8 +218,14 @@ const SD = (function () {
                    : RESIDUAL_MAX * rand01(seed.id + ":" + anchor + ":" + cycleNo);
     const fill     = round1(Math.min(100, residual + r * elapsedH));
 
-    /* 3. Usage: people use it until it locks at FULL, then are turned away. */
-    const useH    = CONFIG.FULL_PERCENT / r;
+    /* 3. Usage: people use it until it locks at FULL, then are turned away.
+          The crossing has to allow for the residue the crew left behind, or
+          the split happens later than the lock does and the dashboard shows a
+          locked bin whose opens counter is still climbing with nobody
+          recorded as turned away. The 0.05 matches the rounding on the line
+          above: a fill of 89.95 already displays - and locks - as 90.0, so
+          usage has to stop there too, not a few seconds later. */
+    const useH    = Math.max(0, (CONFIG.FULL_PERCENT - 0.05 - residual) / r);
     const opens   = Math.floor(Math.min(elapsedH, useH) * r * OPENS_PER_PERCENT);
     const refused = Math.floor(Math.max(0, elapsedH - useH) * r * OPENS_PER_PERCENT);
 

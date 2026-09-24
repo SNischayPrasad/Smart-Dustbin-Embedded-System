@@ -37,6 +37,25 @@ get the bin's built-in status page.
 > An Arduino UNO variant of the whole simulation is kept in
 > `simulation/wokwi/uno/` if you need it.
 
+### Optional - put the simulated bin on the live dashboard
+
+The sketch can report into Firestore, and a Wokwi board can do it just as well
+as a real one. Add a new file tab called `secrets.h`, paste
+`simulation/wokwi/secrets.example.h` into it, and fill in the device account
+you created in Firebase. The serial panel then prints `Cloud: sync ON -
+reporting to Firestore bins/BIN-001`, and that bin turns into a **device** bin
+on the public map, with the numbers coming from the simulation rather than
+from the model.
+
+> **Keep that Wokwi project private.** A public project shows every tab to
+> anyone who opens it, including `secrets.h`. If you want to share a link,
+> share one from a project with no `secrets.h` tab - everything else works
+> exactly the same, the board just does not report to the cloud.
+
+Wokwi's own guidance is not to push sensitive data through the public gateway,
+and it may rate-limit heavy use, so this is a demonstration rather than
+something to leave running for days.
+
 That is it. Skip to "Driving the simulation" below.
 
 ## The long route - build it component by component
@@ -104,9 +123,44 @@ that represents a flat load:
 | 30 cm | 0 % | Green LED on, no alerts |
 | 22.5 cm | 25 % | Green LED on |
 | 15 cm | 50 % | Green LED on |
-| 7.5 cm | 75 % | Green stays on, **red starts blinking** |
-| 3 cm | 90 % | Green off, **red solid, buzzer chirps** |
+| 7.5 cm | 75 % | Green stays on, **red starts blinking**. The lid still opens |
+| 3 cm | 90 % | Green off, **red solid, buzzer chirps**, telemetry gains ` \| LOCKED` - **and the lid stops opening for a hand** |
 | 0 cm | 100 % | Same as 90 %, fill reads 100 |
+
+**To show the full-bin lockdown - the other demonstration worth showing**
+
+1. Set **both** level sensors to **3 cm**. The bin reports `Status=FULL`, the
+   red LED goes solid, and the telemetry line gains ` | LOCKED`.
+2. Now bring the **hand** sensor to 10 cm, as if somebody were about to drop a
+   bag in.
+3. The servo does not move. The serial panel prints, **once**:
+
+```
+### Bin FULL - lid locked until it is emptied
+[54s] Hand=10.2cm | Lid=CLOSED | A=90% B=90% | Fill=90% | Status=FULL | Opens=3 | LOCKED
+{"id":"BIN-001",...,"status":"FULL","locked":true,"refused":1,...}
+```
+
+4. Leave the hand there. `refused` **stays at 1** - the refusal is latched
+   until the hand goes away, or the hand sensor's 60 ms poll would count
+   sixteen refusals a second and flood the panel.
+5. Type `OPEN` and press Enter. The lid opens anyway, and the reply names the
+   override: `lid forced open (crew override - bin FULL)`. That is how the
+   crew get in to empty it. Type `AUTO`, let the lid close, present the hand
+   again, and it is refused once more.
+6. Type `EMPTY`, or just raise both level sensors above 3 cm. The lock is
+   released either way, and `EMPTY` also resets `refused` to 0.
+
+Say out loud why the lock exists: a bin that keeps accepting bags after it has
+reported FULL is how rubbish ends up on the pavement around it.
+
+**To show that safety still beats the lockdown**
+
+Start with an empty bin. Wave the hand sensor so the lid opens, take it away,
+and while the lid is **closing** drop both level sensors to 3 cm and put the
+hand back. The lid re-opens - `!!! Hand returned - re-opening` - even though
+the bin is now full. A lid must never close on somebody's hand, so there is
+deliberately no lock test in the closing branch.
 
 **To simulate an uneven load - the demonstration worth showing**
 
@@ -138,31 +192,48 @@ Click into the serial panel, type `STATUS` and press Enter. Also try `MUTE`,
 At boot:
 ```
 ==================================================
-   SMART DUSTBIN - EMBEDDED SYSTEM
+   SMART DUSTBIN - EMBEDDED SYSTEM (ESP32)
    Device  : BIN-001
-   Firmware: v1.0.0
+   Firmware: v2.0.0-wifi
    Sensors : 1 hand + 2 in-bin level (A and B)
    Bin height     : 30.0 cm
    Hand threshold : 25.0 cm
    Warn / Full    : 75 % / 90 %
    Uneven-load gap: 25 %
+   Full lockdown  : ON (crew override: OPEN)
 ==================================================
 Power-on self test ... outputs OK
 Sensor check: HAND OK | LEVEL-A OK | LEVEL-B OK
+Connecting to Wi-Fi...
+Connected. Dashboard URL: http://10.13.37.2
+HTTP server started on port 80
+Cloud: sync OFF - add secrets.h next to the sketch (copy secrets.example.h) to report to the dashboards
 System running. Type HELP for commands.
 ```
+
+That last `Cloud:` line is what you see without a `secrets.h` tab. With one it
+reads `Cloud: sync ON - reporting to Firestore bins/BIN-001` instead, and
+typing `CLOUD` at any point prints whether the board is signed in, how long
+ago it last pushed, the last HTTP code and the last command id it saw.
 
 While running:
 ```
 [12s] Hand=---cm | Lid=CLOSED | A=0% B=0% | Fill=0% | Status=OK | Opens=0
         [--------------------] 0%
-{"id":"BIN-001","fill":0,"fillA":0,"fillB":0,"spread":0,"uneven":false,"sensors":2,"lid":"CLOSED","status":"OK","opens":0,"errors":0,"uptime":12}
+{"id":"BIN-001","fill":0,...,"lid":"CLOSED","status":"OK","locked":false,"opens":0,"refused":0,"errors":0,...}
 ```
 
-With a hand present and the bin nearly full:
+With a hand present and the bin in the warning band - the lid still opens:
 ```
 >>> Hand detected - opening lid
-[46s] Hand=10.2cm | Lid=OPEN | A=90% B=90% | Fill=90% | Status=FULL | Opens=3
+[46s] Hand=10.2cm | Lid=OPEN | A=82% B=78% | Fill=80% | Status=WARNING | Opens=3
+        [################----] 80%
+```
+
+With a hand present and the bin **full** - the lid does not:
+```
+### Bin FULL - lid locked until it is emptied
+[54s] Hand=10.2cm | Lid=CLOSED | A=90% B=90% | Fill=90% | Status=FULL | Opens=3 | LOCKED
         [##################--] 90%
 ```
 
@@ -196,22 +267,34 @@ display removed and the UNO pin map. Use Wokwi for the ESP32 build. Full instruc
 
 # Part 3 - The browser twin in this repository
 
-The admin dashboard contains a JavaScript port of the same state machine, so
-you can demonstrate the logic with no internet and no account at all.
+Both the public page and the admin dashboard carry a JavaScript port of the
+same state machine, so you can demonstrate the logic with no internet, no
+hardware and no account at all.
 
-1. Open `website/index.html`, or run `node server/server.js`.
-2. Sign in at `login.html` with **Nischay / Admin@123**.
-3. Scroll to **Live firmware simulation**.
-4. Drag the **hand** slider under 25 cm - the lid on the animated bin lifts.
-5. Drag the **sensor A** and **sensor B** sliders, or click the 25 / 50 / 75 /
+1. Open `website/index.html`, or run `node server/server.js`. **No sign-in
+   is needed** - the simulator is on the public page, which is what makes it
+   the safest thing to show when the network is unreliable.
+2. Scroll to **Try the firmware yourself**.
+3. Drag the **hand** slider under 25 cm - the lid on the animated bin lifts.
+4. Drag the **sensor A** and **sensor B** sliders, or click the 25 / 50 / 75 /
    90 % buttons, which set both at once.
-5b. Press **Uneven pile (A 90 / B 10)** and **Unplug sensor A** to see the
+5. Press **Uneven pile (A 90 / B 10)** and **Unplug sensor A** to see the
    fusion and the degraded mode in action.
-6. Watch the LEDs, the buzzer indicator and the serial console react.
-7. Type commands into the console input exactly as you would on the device.
+6. Press **90%** or **Full**, then drag the hand slider under 25 cm. A white
+   padlock appears on the bin, the words **LOCKED - FULL** sit above it, the
+   lid stays shut, and the **Turned away** readout counts up by one. Type
+   `OPEN` into the console and it opens anyway, with the reply naming the
+   crew override.
+7. Watch the LEDs, the buzzer indicator and the serial console react.
+8. Type commands into the console input exactly as you would on the device.
 
 Because it is the same logic with the same constants, its output matches the
-Wokwi run. `node tests/twin.test.js` asserts exactly that, with 64 checks.
+Wokwi run line for line. `node tests/twin.test.js` asserts exactly that, with
+**88 checks**.
+
+The twin is in fact the *reference*: the lockdown was written here first and
+the four firmware builds were made to match it, which is why the tests can be
+trusted to catch a drift in either direction.
 
 ---
 
@@ -235,6 +318,8 @@ These are the images that make the project credible. Save them into
 | 11 | `13-serial-commands.png` | The result of typing `HELP` and `STATUS` |
 | 12 | `14-uneven-load.png` | A at 3 cm, B at 27 cm, `UNEVEN LOAD` in the serial log |
 | 13 | `15-degraded-sensor.png` | One ECHO wire removed, `sensors=1`, `DEGRADED 1 SENSOR` |
+| 14 | `24-full-bin-locked.png` | Both level sensors at 3 cm and the hand sensor at 10 cm: the lid shut, `### Bin FULL - lid locked until it is emptied` and ` \| LOCKED` in the log |
+| 15 | `25-crew-override.png` | The same bin after typing `OPEN`: the lid open and the reply naming the crew override |
 
 ## What simulation proof to upload to GitHub
 

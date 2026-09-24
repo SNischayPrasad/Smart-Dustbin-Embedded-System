@@ -114,9 +114,11 @@ const tick = () => new Promise(r => setImmediate(r));
   const STEP = 10 * 60e3;
   const samples = {};                                   /* id -> [fill every 10 min for 8 days] */
   let outOfRange = [], lockMismatch = [], lockedOpen = 0, frozenMoved = [];
+  let stillOpening = [], refusingUnlocked = [];
   SD.SEED.forEach(s => {
     samples[s.id] = [];
     const first = SD.modelBin(s, null, E);
+    let prevOpens = null, prevLocked = null;
     for (let t = E; t <= E + 8 * 24 * HOUR; t += STEP) {
       const bin = SD.modelBin(s, null, t);
       samples[s.id].push(bin.fill);
@@ -124,12 +126,21 @@ const tick = () => new Promise(r => setImmediate(r));
       if (bin.locked !== (bin.online && bin.fill >= 90)) lockMismatch.push(s.id);
       if (bin.locked && bin.lid === "OPEN") lockedOpen++;
       if (s.offline && (bin.fill !== first.fill || bin.lastSeen !== E - 4 * HOUR)) frozenMoved.push(s.id);
+      /* The moment a bin locks, "people using it" has to stop and "people
+         turned away" has to start - at the SAME instant, not minutes apart.
+         A prior bug let `opens` keep climbing for up to 24 minutes after
+         `locked` flipped true, with `refused` still reading 0. */
+      if (bin.locked && prevLocked && bin.opens > prevOpens) stillOpening.push(s.id);
+      if (!bin.locked && bin.refused > 0) refusingUnlocked.push(s.id);
+      prevOpens = bin.opens; prevLocked = bin.locked;
     }
   });
   check("every fill stays within 0-100 %", [...new Set(outOfRange)], []);
   check("locked == online and fill >= 90, always", [...new Set(lockMismatch)], []);
   check("no locked bin shows lid OPEN (no operator override)", lockedOpen, 0);
   check("a dead device stays frozen at its last reading", [...new Set(frozenMoved)], []);
+  check("a locked bin's open count freezes the instant it locks", [...new Set(stillOpening)], []);
+  check("nobody is 'refused' before the bin is actually locked", [...new Set(refusingUnlocked)], []);
 
   /* Bounded cycles: a simulated crew empties every bin, so no online bin
      can sit at or above 90 % for a whole day. */
